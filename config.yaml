@@ -1,7 +1,9 @@
 speaker_enrichment:
+  # models for identifying speakers' gender
   audio_model_name: ""
-  video_model_name: ""
+  image_model_name: ""
 
   voting_weights:  # weights to give each of the approaches when combining results
-    audio: 0.0
-    video: 0.0
+    audio: 0.0   # by audio
+    image: 0.0   # by image (screenshot)
+    text: 0.0    # by text (transcript analysis with UDPipe)
