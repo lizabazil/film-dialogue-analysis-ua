@@ -1,0 +1,7 @@
+speaker_enrichment:
+  audio_model_name: ""
+  video_model_name: ""
+
+  voting_weights:  # weights to give each of the approaches when combining results
+    audio: 0.0
+    video: 0.0
