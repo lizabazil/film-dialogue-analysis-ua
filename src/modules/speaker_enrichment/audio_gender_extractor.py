@@ -3,7 +3,7 @@ import torchaudio
 from basic_gender_extractor import BasicGenderExtractor
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
-import subprocess
+from utils.audio_file_utils import AudioFileUtils
 
 
 class AudioGenderExtractor(BasicGenderExtractor):
@@ -14,11 +14,11 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(self.model_name)
         self.model = AutoModelForAudioClassification.from_pretrained(self.model_name).to(self.device)
-        self.sampling_rate = 16000   # the model needs this specific sampling rate
+        self.sampling_rate = 16000  # the model needs this specific sampling rate
         self.audio_path = ...  # TODO: add proper audio path
 
         # create audio file from video
-        self._convert_to_audio_file()
+        AudioFileUtils.extract_audio_from_video(self.video_path, self.audio_path)
 
     def predict_gender(self, segments: list) -> dict | None:
         """
@@ -27,8 +27,9 @@ class AudioGenderExtractor(BasicGenderExtractor):
         # TODO: choose a couple of segments to analyze (if there are many)
         labels = {"female": 0, "male": 0}
         scores = {"max_female_score": -1, "max_male_score": -1}
-        for segment in ...:   # in chosen segments
-            speech_array = self._prepare_speech_array_from_audio_file(...)  # TODO: provide valid audio file path for the segment
+        for segment in ...:  # in chosen segments
+            speech_array = self._prepare_speech_array_from_audio_file(
+                ...)  # TODO: provide valid audio file path for the segment
             inputs = self.feature_extractor(
                 speech_array,
                 sampling_rate=self.sampling_rate,
@@ -74,23 +75,3 @@ class AudioGenderExtractor(BasicGenderExtractor):
 
         speech_array = speech_array.squeeze().numpy()
         return speech_array
-
-    def _convert_to_audio_file(self) -> None:
-        """
-        Converts the video file to an audio file using ffmpeg.
-        """
-        command = [
-            "ffmpeg",
-            "-i", self.video_path,
-            '-vn',
-            '-acodec', 'pcm_s16le',
-            '-ar', '16000',   # to 16 kHz
-            '-ac', '1',  # to one audio channel
-            '-y',   # overwrite output file if exists
-            self.audio_path
-        ]
-        try:
-            subprocess.run(command, check=True)
-        except Exception as e:
-            print(f"Error during audio extraction: {e}")
-        return None
