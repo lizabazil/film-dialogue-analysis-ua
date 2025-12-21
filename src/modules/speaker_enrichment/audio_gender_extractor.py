@@ -21,11 +21,14 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self._convert_to_audio_file()
 
     def predict_gender(self, segments: list) -> dict | None:
+        """
+        This method is designed for many segments belonging to one speaker.
+        """
         # TODO: choose a couple of segments to analyze (if there are many)
-        best_label = None
-        best_score = -1
+        labels = {"female": 0, "male": 0}
+        scores = {"max_female_score": -1, "max_male_score": -1}
         for segment in ...:   # in chosen segments
-            speech_array = self._prepare_speech_array_from_audio_file(...)  # TODO: provide valid audio file path
+            speech_array = self._prepare_speech_array_from_audio_file(...)  # TODO: provide valid audio file path for the segment
             inputs = self.feature_extractor(
                 speech_array,
                 sampling_rate=self.sampling_rate,
@@ -38,10 +41,13 @@ class AudioGenderExtractor(BasicGenderExtractor):
             score = probs[0][pred_id].item()
             label = self.model.config.id2label[pred_id]
 
-            if score > best_score:
-                best_score = score
-                best_label = label
-        return {"label": best_label, "score": best_score}
+            labels[label] += 1
+            scores["max_" + label + "_score"] = max(scores["max_" + label + "_score"], score)
+
+        final_label = max(labels, key=labels.get)  # to get the key with the highest value
+        final_score = scores["max_" + final_label + "_score"]
+
+        return {"label": final_label, "score": final_score}
 
     def _use_model_to_get_prediction(self, inputs) -> tuple:
         """
