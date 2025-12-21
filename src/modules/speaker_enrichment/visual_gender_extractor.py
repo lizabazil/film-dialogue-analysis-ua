@@ -31,6 +31,8 @@ class VisualGenderExtractor(BasicGenderExtractor):
     def predict_gender(self, segments: list) -> dict | None:
         """
         Predicts the speaker's gender using visual data from video segments and an image-to-text model.
+        Returns:
+            dict | None: The dictionary is in format {"label": ..., "score": ...}
         """
         # TODO: choose a couple of segments to analyze (if there are many)
         # TODO: take screenshots from those segments (at the midpoint of each segment)
@@ -40,19 +42,20 @@ class VisualGenderExtractor(BasicGenderExtractor):
                 segment["end_h"], segment["end_m"], segment["end_s"], segment["end_ms"]
             )
 
-            image_bgr = self._take_screenshot(self.video_path, middle_h, middle_m, middle_s, middle_ms)  # BGR format from OpenCV
+            image_bgr = self._take_screenshot(self.video_path, middle_h, middle_m, middle_s,
+                                              middle_ms)  # BGR format from OpenCV
             image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
             # model inference
             scores, boxes, labels = self._use_grounding_dino_model(image_rgb)
         return None
 
-    def _use_grounding_dino_model(self, image: np.ndarray) -> tuple:
+    def _use_grounding_dino_model(self, image: np.ndarray, text_request: str = "a man. a woman.") -> tuple:
         """
         Uses Grounding DINO model to detect objects in the given image.
         https://huggingface.co/IDEA-Research/grounding-dino-base
         """
         # get predictions from the image-to-text model
-        text = "a man. a woman."
+        text = text_request
         inputs = self.processor(images=image, text=text, return_tensors="pt").to(self.device)
         with torch.no_grad():
             outputs = self.model(**inputs)

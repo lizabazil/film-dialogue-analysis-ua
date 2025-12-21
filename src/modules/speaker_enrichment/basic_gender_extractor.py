@@ -7,7 +7,7 @@ class BasicGenderExtractor(ABC):
     Basic class with abstract method to set a way of predicting speaker's gender by numerous segments.
     """
     @abstractmethod
-    def predict_gender(self, segments: list) -> Optional[dict]:
+    def predict_gender(self, segments: list) -> dict | None:
         """
         Predicts the gender of the speaker. Returns result in a dictionary format (label, score) or None if it is not
         possible to detect gender.
