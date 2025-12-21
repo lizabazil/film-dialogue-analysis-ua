@@ -7,6 +7,10 @@ from utils.audio_file_utils import AudioFileUtils
 
 
 class AudioGenderExtractor(BasicGenderExtractor):
+    """
+    This class is responsible for predicting the gender by audio segments. It uses a pre-trained audio classification
+    model.
+    """
     def __init__(self, config: dict, video_path: str):
         super().__init__()
         self.video_path = video_path
@@ -15,21 +19,40 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(self.model_name)
         self.model = AutoModelForAudioClassification.from_pretrained(self.model_name).to(self.device)
         self.sampling_rate = 16000  # the model needs this specific sampling rate
-        self.audio_path = ...  # TODO: add proper audio path
+        self.full_audio_path = ...  # TODO: add proper audio path
+        self.temp_cut_audio_path = ...  # TODO: add proper cut audio path for saving temporary segments
 
         # create audio file from video
-        AudioFileUtils.extract_audio_from_video(self.video_path, self.audio_path)
+        AudioFileUtils.extract_audio_from_video(self.video_path, self.full_audio_path)
 
     def predict_gender(self, segments: list) -> dict | None:
         """
         This method is designed for many segments belonging to one speaker.
+        Each segment is supposed to be in the format:
+        {
+            "start_h": ...,
+            "start_m": ...,
+            "start_s": ...,
+            "start_ms": ...,
+            "end_h": ...,
+            "end_m": ...,
+            "end_s": ...,
+            "end_ms": ...
+        }
         """
         # TODO: choose a couple of segments to analyze (if there are many)
         labels = {"female": 0, "male": 0}
         scores = {"max_female_score": -1, "max_male_score": -1}
         for segment in ...:  # in chosen segments
-            speech_array = self._prepare_speech_array_from_audio_file(
-                ...)  # TODO: provide valid audio file path for the segment
+            # cut audio segment from full audio
+            AudioFileUtils.cut_audio_segment(self.full_audio_path, self.temp_cut_audio_path,
+                                             segment["start_h"], segment["start_m"], segment["start_s"],
+                                             segment["start_ms"],
+                                             segment["end_h"], segment["end_m"], segment["end_s"],
+                                             segment["end_ms"])
+
+            # get speech array from the cut audio file
+            speech_array = self._prepare_speech_array_from_audio_file(self.temp_cut_audio_path)
             inputs = self.feature_extractor(
                 speech_array,
                 sampling_rate=self.sampling_rate,

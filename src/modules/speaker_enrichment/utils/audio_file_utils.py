@@ -3,6 +3,10 @@ from pydub import AudioSegment
 
 
 class AudioFileUtils:
+    """
+    This class provides utility methods for audio file manipulation, including extracting audio from video files,
+    and cutting segments from audio files.
+    """
     @staticmethod
     def extract_audio_from_video(video_path: str, audio_path: str) -> None:
         """
