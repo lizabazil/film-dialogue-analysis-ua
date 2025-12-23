@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from utils.time_utils import TimeUtils
 from utils.video_utils import VideoUtils
+from segment import Segment
 
 
 def draw_bounding_box(bbox: list, image: Image.Image,
@@ -30,7 +31,7 @@ class VisualGenderExtractor(BasicGenderExtractor):
         self.processor = AutoProcessor.from_pretrained(self.model_name)
         self.model = AutoModelForZeroShotObjectDetection.from_pretrained(self.model_name).to(self.device)
 
-    def predict_gender(self, segments: list) -> dict | None:
+    def predict_gender(self, segments: list[Segment]) -> dict | None:
         """
         Predicts the speaker's gender using visual data from video segments and an image-to-text model.
         Returns:
@@ -40,8 +41,8 @@ class VisualGenderExtractor(BasicGenderExtractor):
         # TODO: take screenshots from those segments (at the midpoint of each segment)
         for segment in ...:  # in chosen segments
             middle_h, middle_m, middle_s, middle_ms = TimeUtils.get_middle_point(
-                segment["start_h"], segment["start_m"], segment["start_s"], segment["start_ms"],
-                segment["end_h"], segment["end_m"], segment["end_s"], segment["end_ms"]
+                segment.start_h, segment.start_m, segment.start_s, segment.start_ms,
+                segment.end_h, segment.end_m, segment.end_s, segment.end_ms
             )
 
             image_bgr = VideoUtils.take_screenshot(self.video_path, middle_h, middle_m, middle_s,

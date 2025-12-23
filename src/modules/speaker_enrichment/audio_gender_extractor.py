@@ -4,6 +4,7 @@ from basic_gender_extractor import BasicGenderExtractor
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
 from utils.audio_file_utils import AudioFileUtils
+from segment import Segment
 
 
 class AudioGenderExtractor(BasicGenderExtractor):
@@ -25,20 +26,9 @@ class AudioGenderExtractor(BasicGenderExtractor):
         # create audio file from video
         AudioFileUtils.extract_audio_from_video(self.video_path, self.full_audio_path)
 
-    def predict_gender(self, segments: list) -> dict | None:
+    def predict_gender(self, segments: list[Segment]) -> dict | None:
         """
         This method is designed for many segments belonging to one speaker.
-        Each segment is supposed to be in the format:
-        {
-            "start_h": ...,
-            "start_m": ...,
-            "start_s": ...,
-            "start_ms": ...,
-            "end_h": ...,
-            "end_m": ...,
-            "end_s": ...,
-            "end_ms": ...
-        }
         """
         # TODO: choose a couple of segments to analyze (if there are many)
         labels = {"female": 0, "male": 0}
@@ -46,10 +36,10 @@ class AudioGenderExtractor(BasicGenderExtractor):
         for segment in ...:  # in chosen segments
             # cut audio segment from full audio
             AudioFileUtils.cut_audio_segment(self.full_audio_path, self.temp_cut_audio_path,
-                                             segment["start_h"], segment["start_m"], segment["start_s"],
-                                             segment["start_ms"],
-                                             segment["end_h"], segment["end_m"], segment["end_s"],
-                                             segment["end_ms"])
+                                             segment.start_h, segment.start_m, segment.start_s,
+                                             segment.start_ms,
+                                             segment.end_h, segment.end_m, segment.end_s,
+                                             segment.end_ms)
 
             # get speech array from the cut audio file
             speech_array = self._prepare_speech_array_from_audio_file(self.temp_cut_audio_path)
