@@ -65,3 +65,25 @@ class AudioFileUtils:
         mid_seconds.export(output_file_path, format="mp3")
         #print("New Audio file is created and saved")
         return None
+
+    @staticmethod
+    def cut_audio_segment_in_ms(input_file_path: str, output_file_path: str,
+                           start_ms : float, end_ms : float) -> None:
+        """
+        Cuts a segment from an audio file and saves it as a new file.
+        This function differs from the function about that fact, that accepts start and end time in milliseconds
+        instead of hours, minute and seconds.
+        Args:
+            input_file_path (str): Path to the input audio file.
+            output_file_path (str): Path to save the output audio segment.
+            start_ms (float): Start time expressed in milliseconds.
+            end_ms (float): End time expresses in milliseconds.
+
+        Returns:
+            None
+        """
+        audio = AudioSegment.from_file(input_file_path, format="mp3")
+        mid_seconds = audio[start_ms:end_ms]
+        mid_seconds.export(output_file_path, format="mp3")
+        return None
+
