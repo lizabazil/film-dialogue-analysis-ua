@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-from time_utils import TimeUtils
+from src.modules.speaker_enrichment.utils.time_utils import TimeUtils
+import subprocess
 
 
 class VideoUtils:
@@ -20,3 +21,26 @@ class VideoUtils:
             return image
             #cv2.imwrite("data/screenshots/screen.jpg", image)
         return None
+
+    @staticmethod
+    def get_duration_of_video(video_path: str) -> tuple:
+        result = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                                 "format=duration", "-of",
+                                 "default=noprint_wrappers=1:nokey=1",
+                                 "-sexagesimal",
+                                 video_path],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        decoded_duration = result.stdout.decode("utf-8").strip()
+        print("type", type(decoded_duration))
+        print("RESULT", decoded_duration)
+
+        parsed_to_normal = VideoUtils._parse_duration_output(decoded_duration)
+        return parsed_to_normal
+
+    @staticmethod
+    def _parse_duration_output(output_duration: str) -> tuple:
+        split = output_duration.split(":")
+        hour, minute = split[0], split[1]
+        seconds = split[2].split(".")[0]
+        return hour, minute, seconds
