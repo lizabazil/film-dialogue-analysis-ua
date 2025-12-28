@@ -34,8 +34,8 @@ class PyannoteDiarizer:
             with ProgressHook() as hook:
                 waveform, sample_rate = torchaudio.load(audio_path)
                 default_parameters = self.pipeline.parameters(instantiated=True)
-                for param, value in default_parameters.items():
-                    print(f"{param}: {value}")
+                #for param, value in default_parameters.items():
+                    #print(f"{param}: {value}")
 
                 diarization = self.pipeline({"waveform": waveform,
                                              "sample_rate": sample_rate},
