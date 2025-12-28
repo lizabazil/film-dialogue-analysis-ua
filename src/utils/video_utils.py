@@ -23,7 +23,15 @@ class VideoUtils:
         return None
 
     @staticmethod
-    def get_duration_of_video(video_path: str) -> tuple:
+    def get_duration_of_video(video_path: str) -> tuple[int, int, int]:
+        """
+        Get the total duration of the video file.
+        Args:
+            video_path (str): The path of the given video file.
+        Returns:
+            tuple[int, int, int] : The hours, minutes and seconds, with the duration for the given file.
+
+        """
         result = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
                                  "format=duration", "-of",
                                  "default=noprint_wrappers=1:nokey=1",
@@ -39,8 +47,8 @@ class VideoUtils:
         return parsed_to_normal
 
     @staticmethod
-    def _parse_duration_output(output_duration: str) -> tuple:
+    def _parse_duration_output(output_duration: str) -> tuple[int, int, int]:
         split = output_duration.split(":")
         hour, minute = split[0], split[1]
         seconds = split[2].split(".")[0]
-        return hour, minute, seconds
+        return int(hour), int(minute), int(seconds)

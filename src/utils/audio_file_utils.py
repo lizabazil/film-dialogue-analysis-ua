@@ -1,3 +1,4 @@
+import os.path
 import subprocess
 from pydub import AudioSegment
 
@@ -19,12 +20,15 @@ class AudioFileUtils:
         Returns:
             None
         """
+        video_path = os.path.abspath(video_path)
+        audio_path = os.path.abspath(audio_path)
+
         command = [
             "ffmpeg",
             "-i", video_path,
             '-vn',
-            '-acodec', 'pcm_s16le',
-            '-ar', '16000',  # to 16 kHz
+            '-acodec', 'libmp3lame', #'pcm_s16le',
+            '-ar', '192k',  # to 16 kHz
             '-ac', '1',  # to one audio channel
             '-y',  # overwrite output file if exists
             audio_path
