@@ -5,8 +5,8 @@ from transformers import (AutoProcessor, AutoModelForZeroShotObjectDetection)
 from PIL import Image, ImageDraw
 import cv2
 import numpy as np
-from utils.time_utils import TimeUtils
-from utils.video_utils import VideoUtils
+from src.utils.time_utils import TimeUtils
+from src.utils.video_utils import VideoUtils
 from segment import Segment
 
 

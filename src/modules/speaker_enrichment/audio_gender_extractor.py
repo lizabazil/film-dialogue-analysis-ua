@@ -3,7 +3,7 @@ import torchaudio
 from basic_gender_extractor import BasicGenderExtractor
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
-from utils.audio_file_utils import AudioFileUtils
+from src.utils.audio_file_utils import AudioFileUtils
 from segment import Segment
 
 

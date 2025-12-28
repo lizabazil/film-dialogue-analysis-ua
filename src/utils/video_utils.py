@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from src.modules.speaker_enrichment.utils.time_utils import TimeUtils
+from src.utils.time_utils import TimeUtils
 import subprocess
 
 
