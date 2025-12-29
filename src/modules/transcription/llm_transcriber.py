@@ -8,6 +8,43 @@ from google.api_core import exceptions
 import time
 
 
+def get_last_n_lines_from_response(response: str, last_n_lines: int = 30) -> str:
+    lines = response.strip().split("\n")
+    res = "\n".join(lines[-last_n_lines:])
+    return res
+
+
+def create_prompt_with_previous_context(previous_context: str = "") -> str:
+    return f"""
+    ТИ — ПРОФЕСІЙНИЙ ПЕРЕКЛАДАЧ ТА ТРАНСКРИБАТОР УКРАЇНСЬКИХ ФІЛЬМІВ.
+
+    --- ВХІДНІ ДАНІ: КОНТЕКСТ ---
+    Нижче наведено текст з попередньої частини фільму. 
+    ВИКОРИСТОВУЙ ЙОГО ЛИШЕ ДЛЯ РОЗУМІННЯ КОНТЕКСТУ (хто говорить, про що, який рід вживати).
+    НЕ ТРАНСКРИБУЙ І НЕ ПЕРЕКЛАДАЙ ЦЕЙ ТЕКСТ ЗНОВУ. ВІН ТУТ ТІЛЬКИ ДЛЯ ДОВІДКИ.
+
+    <previous_context>
+    {previous_context if previous_context else "Це початок фільму. Контексту немає."}
+    </previous_context>
+
+    --- ВХІДНІ ДАНІ: АУДІО ---
+    Твоє завдання — працювати виключно з наданим АУДІО-файлом.
+
+    --- ІНСТРУКЦІЇ ---
+    1. Прослухай аудіо та транскрибуй мовлення.
+    2. ОДРАЗУ перекладай транскрипцію українською мовою.
+    3. Враховуй контекст з <previous_context> для правильного вибору роду, звертань та стилю.
+    4. Формат виводу (суворий):
+       [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки українською.
+    5. Ідентифікація спікерів: Використовуй суворі мітки SPEAKER_01, SPEAKER_02 і так далі.
+
+    --- ВАЖЛИВО ---
+    - Ігноруй музику та шуми.
+    - Якщо мова оригіналу не українська, перекладай літературно на українську мову.
+    - НЕ виводь текст з розділу <previous_context> у фінальний результат. Починай лише з нових фраз з аудіо.
+    """
+
+
 class LLMTranscriber:
     """
     This class is responsible for sending requests to LLM in order to get a transcript of the movie (including
@@ -28,13 +65,12 @@ class LLMTranscriber:
         #                         '5. Мова аудіо: українська.')
         self.requirements_to_response = (
             'Вимоги до виводу:\n'
-            '1. Формат виводу: Поверни результат у вигляді простого тексту, де кожен рядок відповідає одній репліці у форматі: [HOUR:MINUTE:SECONDS.MS - HOUR:MINUTE:SECONDS.MS] SPEAKER_XX: Текст репліки.\n'
+            '1. Формат виводу: Поверни результат у вигляді простого тексту, де кожен рядок відповідає одній репліці у форматі: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
             '2. Ідентифікація спікерів: Використовуй суворі мітки SPEAKER_01, SPEAKER_02 і так далі.\n'
             '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу та немовленнєві звуки.\n'
             '4. Переклад та мова: Цільова мова виводу — виключно УКРАЇНСЬКА. Аудіо може містити різні мови. Твоє завдання — розпізнати мовлення і ОДРАЗУ перекласти його українською мовою. Переклад має бути літературним та відповідати контексту фільму. Не пиши текст іноземною мовою, пиши лише український переклад.'
         )
 
-        #self.txt_file_path_for_transcript = "../../../data/temporary_files/llm_transcript.txt"
         self.txt_file_path_for_transcript = txt_file_path_for_transcript
         self.chunk_length_in_min = 8  # the whole audio file will be split in chunks each being 8 minutes
         self.overlap_in_min = 1
@@ -50,6 +86,8 @@ class LLMTranscriber:
 
         load_dotenv()
         self._take_next_key()  # initialize model with the very first api key
+
+        self.prev_response = ""
 
     def _take_next_key(self) -> None:
         """
@@ -123,16 +161,19 @@ class LLMTranscriber:
                 response = self.model.generate_content(
                     [
                         uploaded_file,
-                        self.requirements_to_response
+                        #self.requirements_to_response,
+                        create_prompt_with_previous_context(get_last_n_lines_from_response(self.prev_response, 30))
                     ]
                 )
+                text_response = response.text
+                self.prev_response = text_response
 
                 try:
                     uploaded_file.delete()
                 except:
                     pass
 
-                return response.text
+                return text_response
 
             except exceptions.ResourceExhausted as e:
                 print(f"Resource exhausted: {e}.\nWaiting 60 seconds in case this is RPM limit...")
@@ -167,13 +208,17 @@ class LLMTranscriber:
             response = self._send_safe_request(self.temp_path_to_cut_audio_file)
             # TODO: convert to proper timecodes to match the full audio
             with open(self.txt_file_path_for_transcript, "a") as f:
+                f.write(f"\n\n-- CHUNK {i} --\n")
                 f.write(response)
-                f.write("\n\n--NEXT CHUNK--\n")
         return None
 
-    def write_transcript(self):
+    def write_full_transcript_to_the_file(self):
         hours, minutes, seconds = VideoUtils.get_duration_of_video(self.full_video_path)
         total_duration_in_ms = TimeUtils.convert_to_ms(hours, minutes, seconds, 0)
         chunks = self._get_chunk_intervals(total_duration_in_ms)
+        # for debugging
+        #for i, (s, e) in enumerate(chunks):
+            #print(f'Chunk {i}: from {s} to {e} ms')
+        #return
         self._send_chunks_to_llm(chunks)
         return None
