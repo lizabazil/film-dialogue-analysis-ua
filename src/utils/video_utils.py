@@ -40,8 +40,6 @@ class VideoUtils:
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         decoded_duration = result.stdout.decode("utf-8").strip()
-        print("type", type(decoded_duration))
-        print("RESULT", decoded_duration)
 
         parsed_to_normal = VideoUtils._parse_duration_output(decoded_duration)
         return parsed_to_normal
