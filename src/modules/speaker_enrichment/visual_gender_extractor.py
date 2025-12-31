@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from src.utils.time_utils import TimeUtils
 from src.utils.video_utils import VideoUtils
-from segment import Segment
+from src.utils.segment import Segment
 
 
 def draw_bounding_box(bbox: list, image: Image.Image,

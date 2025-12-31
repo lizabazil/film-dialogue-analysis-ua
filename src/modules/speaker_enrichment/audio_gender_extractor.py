@@ -4,7 +4,7 @@ from basic_gender_extractor import BasicGenderExtractor
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
 from src.utils.audio_file_utils import AudioFileUtils
-from segment import Segment
+from src.utils.segment import Segment
 
 
 class AudioGenderExtractor(BasicGenderExtractor):

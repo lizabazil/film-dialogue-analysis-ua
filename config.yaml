@@ -7,3 +7,16 @@ speaker_enrichment:
     audio: 0.0   # by audio
     image: 0.0   # by image (screenshot)
     text: 0.0    # by text (transcript analysis with UDPipe)
+
+llm_transcriber:
+  model_name: "gemini-2.5-flash"  # this model will be used for creating transcripts
+  chunk_length_in_min: 8 # length of audio chunks to be sent to the LLM transcriber
+  overlap_in_min: 1    # overlap between audio chunks to avoid cutting sentences
+  api_keys_config:
+    env_variables_names:
+      - "GEMINI_API_KEY_1"
+      - "GEMINI_API_KEY_2"
+      - "GEMINI_API_KEY_3"
+      - "GEMINI_API_KEY_4"
+      - "GEMINI_API_KEY_5"
+      - "GEMINI_API_KEY_6"

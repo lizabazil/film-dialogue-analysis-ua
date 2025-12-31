@@ -2,7 +2,7 @@
 from audio_gender_extractor import AudioGenderExtractor
 from visual_gender_extractor import VisualGenderExtractor
 from text_gender_extractor import TextGenderExtractor
-from segment import Segment
+from src.utils.segment import Segment
 
 
 class GenderEnricher:

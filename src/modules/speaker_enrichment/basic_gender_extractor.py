@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from segment import Segment
+from src.utils.segment import Segment
 
 
 class BasicGenderExtractor(ABC):

@@ -15,6 +15,16 @@ def get_last_n_lines_from_response(response: str, last_n_lines: int = 30) -> str
 
 
 def create_prompt_with_previous_context(previous_context: str = "") -> str:
+    """
+    To create strict prompt with context from the previous subscription.
+    This approach will not be used in the final implementation for LLM transcriber, since it does not give
+    better results and sometimes may even lead to the model confusion.
+
+    Args:
+        previous_context (str):
+    Returns:
+        str: The ready prompt with inserted previous context.
+    """
     return f"""
     ТИ — ПРОФЕСІЙНИЙ ПЕРЕКЛАДАЧ ТА ТРАНСКРИБАТОР УКРАЇНСЬКИХ ФІЛЬМІВ.
 
@@ -54,34 +64,51 @@ class LLMTranscriber:
 
     TimeInterval = tuple[float, float]  # type alias for simplifying structure
 
-    def __init__(self, full_video_path: str, txt_file_path_for_transcript: str, model_name: str = "gemini-2.5-flash"):
-        self.model_name = model_name
+    def __init__(self, full_video_path: str, config: dict, txt_file_path_for_transcript: str):
+        self.model_name = config["llm_transcriber"]["model_name"]
         self.full_video_path = full_video_path
         self.model = None
-        # self.requirements_to_response = ('Вимоги до виводу:\n'
-        #                         '1. Формат виводу: Поверни результат у вигляді простого тексту, де кожен рядок відповідає одному репліці у форматі: [HOUR:MINUTE:SECONDS.MS - HOUR:MINUTE:SECONDS.MS] SPEAKER_XX. Також виводь текст мовців.'
-        #                         '3. Ідентифікація спікерів: Використовуй суворі мітки SPEAKER_01, SPEAKER_02 і так далі. Не намагайся вгадати імена чи ролі (наприклад, не пиши "Narrator" чи "Man").'
-        #                         '4. Фільтрація: Ігноруй музику, звукові ефекти, тишу та немовленнєві звуки. Не включай їх у вивід.'
-        #                         '5. Мова аудіо: українська.')
         self.requirements_to_response = (
             'Вимоги до виводу:\n'
-            '1. Формат виводу: Поверни результат у вигляді простого тексту, де кожен рядок відповідає одній репліці у форматі: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
+            '1. Формат виводу: Поверни результат у вигляді простого тексту. Кожен рядок — одна репліка.\n'
+            '   Формат: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
+            '   ВАЖЛИВО: Використовуй ВІДНОСНИЙ час аудіофайлу. Тобто початок аудіо — це завжди 00:00:00.000. '
+            'Не намагайся обчислювати реальний час фільму.\n'
             '2. Ідентифікація спікерів: Використовуй суворі мітки SPEAKER_01, SPEAKER_02 і так далі.\n'
             '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу та немовленнєві звуки.\n'
-            '4. Переклад та мова: Цільова мова виводу — виключно УКРАЇНСЬКА. Аудіо може містити різні мови. Твоє завдання — розпізнати мовлення і ОДРАЗУ перекласти його українською мовою. Переклад має бути літературним та відповідати контексту фільму. Не пиши текст іноземною мовою, пиши лише український переклад.'
-        )
+            '4. Точність часу: Таймкод початку — момент ПЕРШОГО звуку голосу. Таймкод кінця — момент ОСТАННЬОГО звуку. '
+            'Обов\'язково вказуй мілісекунди.\n'
+            '5. Переклад: Цільова мова — виключно УКРАЇНСЬКА. Якщо наявна інша мова - перекладай літературно, одразу з аудіо. '
+            'Не пиши оригінальний текст.')
+        # self.requirements_to_response = (
+        #     'Вимоги до виводу:\n'
+        #     '1. Формат виводу: Поверни результат у вигляді простого тексту.\n'
+        #     '   Формат: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
+        #     '   ВАЖЛИВО: Використовуй ВІДНОСНИЙ час аудіофайлу (початок 00:00:00.000).\n'
+        #
+        #     '2. Розділення мовців (НАЙВИЩИЙ ПРІОРИТЕТ): \n'
+        #     '   - Твоє головне завдання — детектувати ЗМІНУ мовця. \n'
+        #     '   - ЩОРАЗУ, коли змінюється голос, починає говорити інша людина — РОБИ НОВИЙ РЯДОК з новим таймкодом.\n'
+        #     '   - Навіть якщо це одне слово ("Так", "Ага", "Ні") іншої людини — це окремий рядок.\n'
+        #     '   - Не бійся створювати багато коротких рядків. Краще розбити репліку одного мовця на дві частини, ніж злити двох мовців в одну.\n'
+        #     '   - Використовуй мітки SPEAKER_01, SPEAKER_02, щоб просто показати чергування. Не обов\'язково, щоб SPEAKER_01 на початку файлу був тим самим SPEAKER_01 в кінці.\n'
+        #
+        #     '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу та немовленнєві звуки.\n'
+        #     '4. Точність часу: Таймкод початку — момент ПЕРШОГО звуку. Таймкод кінця — момент ОСТАННЬОГО звуку.\n'
+        #     '5. Переклад: Цільова мова — виключно УКРАЇНСЬКА. Якщо наявна інша мова - перекладай літературно, одразу з аудіо. '
+        #     'Не пиши оригінальний текст.'
+        # )
 
         self.txt_file_path_for_transcript = txt_file_path_for_transcript
-        self.chunk_length_in_min = 8  # the whole audio file will be split in chunks each being 8 minutes
-        self.overlap_in_min = 1
+        self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 8)  # the whole audio file will be split in chunks each being 8 minutes
+        self.overlap_in_min = config.get("llm_transcriber", {}).get("overlap_in_min", 1)
 
         # here will be saved the full audio file of the given video
         self.full_audio_path = "../../../data/temporary_files/full_audio.mp3"
         AudioFileUtils.extract_audio_from_video(full_video_path, self.full_audio_path)
 
         self.temp_path_to_cut_audio_file = "../../../data/temporary_files/cut_audio.mp3"
-        self.names_of_api_keys = ["GEMINI_API_KEY_1", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4",
-                                  "GEMINI_API_KEY_5"]
+        self.names_of_api_keys = config["llm_transcriber"]["api_keys_config"]["env_variables_names"]
         self.next_key_index = 0
 
         load_dotenv()
@@ -93,11 +120,13 @@ class LLMTranscriber:
         """
         Configures API key from the list of given API keys.
         """
-        api_key = os.getenv(self.names_of_api_keys[self.next_key_index])
+        key_name = self.names_of_api_keys[self.next_key_index]
+        api_key = os.getenv(key_name)
         genai.configure(api_key=api_key)
         self.next_key_index += 1
 
         self.model = genai.GenerativeModel(self.model_name)
+        print(f"Changed key. New key is {key_name}")
         return None
 
     def _get_chunk_intervals(self, total_duration_ms: float) -> list[TimeInterval]:
@@ -133,7 +162,7 @@ class LLMTranscriber:
 
     def _send_safe_request(self, audio_file_path: str) -> str | None:
         """
-        Sends request to the Gemini with given audio file and prepared text input.
+        Sends request to the Gemini with one given audio file (one chunk) and prepared text input.
 
         Args:
             audio_file_path (str): Path to the audio file, which needs to be transcribed.
@@ -161,8 +190,8 @@ class LLMTranscriber:
                 response = self.model.generate_content(
                     [
                         uploaded_file,
-                        #self.requirements_to_response,
-                        create_prompt_with_previous_context(get_last_n_lines_from_response(self.prev_response, 30))
+                        self.requirements_to_response,
+                        #create_prompt_with_previous_context(get_last_n_lines_from_response(self.prev_response, 30))
                     ]
                 )
                 text_response = response.text
@@ -197,28 +226,47 @@ class LLMTranscriber:
         print("Unable to call API...")
         return None
 
-    def _send_chunks_to_llm(self, chunks: list[TimeInterval]):
+    def _send_chunks_to_llm(self, chunks: list[TimeInterval]) -> None:
         """
-        Sends chunks of audio with given length and writes transcription to the file.
+        Sends chunks of audio with given length to the LLM and writes transcription to the output file.
+        Args:
+            chunks (list[TimeInterval]): Chunks which consist of start and end timecodes (relatively to the whole movie).
+        Returns:
+            None
         """
         for i, (start, end) in enumerate(chunks):
             AudioFileUtils.cut_audio_segment_in_ms(self.full_audio_path,
                                                    self.temp_path_to_cut_audio_file,
                                                    start_ms=start, end_ms=end)
-            response = self._send_safe_request(self.temp_path_to_cut_audio_file)
+
+            response = None
+            # because llm may not return anything because of so-called copyright material, that's why we are trying to
+            # get response until we get it
+            while response is None:
+                response = self._send_safe_request(self.temp_path_to_cut_audio_file)
+                print(f"Got response from llm for chunk {i}") if response is not None else print(f"Didn't get "
+                                                                                                 f"response from llm "
+                                                                                                 f"for chunk {i}")
             # TODO: convert to proper timecodes to match the full audio
             with open(self.txt_file_path_for_transcript, "a") as f:
-                f.write(f"\n\n-- CHUNK {i} --\n")
+                f.write(f"-- CHUNK {i} --\n")
                 f.write(response)
+                f.write("\n\n")
         return None
 
-    def write_full_transcript_to_the_file(self):
+    def write_full_transcript_to_the_file(self) -> None:
+        """
+        Method for getting transcript of the whole audio.
+        Firstly, this method detect the duration of the movie. Secondly, it splits the whole movie into the chunks of
+        a set length.
+        Lastly, this method writes the final transcript to the given output file.
+
+        Returns:
+            None
+        """
         hours, minutes, seconds = VideoUtils.get_duration_of_video(self.full_video_path)
         total_duration_in_ms = TimeUtils.convert_to_ms(hours, minutes, seconds, 0)
         chunks = self._get_chunk_intervals(total_duration_in_ms)
-        # for debugging
-        #for i, (s, e) in enumerate(chunks):
-            #print(f'Chunk {i}: from {s} to {e} ms')
-        #return
+        print(f"Number of chunks: {len(chunks)}")
         self._send_chunks_to_llm(chunks)
         return None
