@@ -4,7 +4,7 @@ class TimeUtils:
     """
 
     @staticmethod
-    def convert_ms_to_normal(ms: float) -> tuple:
+    def convert_ms_to_normal(ms: float) -> tuple[int, int, int, int]:
         """
         Converts milliseconds to hours, minutes, seconds and milliseconds.
         """
