@@ -4,6 +4,7 @@ import os
 from src.utils.time_utils import TimeUtils
 from src.utils.audio_file_utils import AudioFileUtils
 from src.utils.video_utils import VideoUtils
+from src.utils.file_utils import FileUtils
 from google.api_core import exceptions
 import time
 
@@ -115,6 +116,8 @@ class LLMTranscriber:
         self._take_next_key()  # initialize model with the very first api key
 
         self.prev_response = ""
+        # delete file in which will be transcript from LLM
+        FileUtils.delete_file(self.txt_file_path_for_transcript)
 
     def _take_next_key(self) -> None:
         """
@@ -247,7 +250,6 @@ class LLMTranscriber:
                 print(f"Got response from llm for chunk {i}") if response is not None else print(f"Didn't get "
                                                                                                  f"response from llm "
                                                                                                  f"for chunk {i}")
-            # TODO: convert to proper timecodes to match the full audio
             with open(self.txt_file_path_for_transcript, "a") as f:
                 f.write(f"-- CHUNK {i} --\n")
                 f.write(response)

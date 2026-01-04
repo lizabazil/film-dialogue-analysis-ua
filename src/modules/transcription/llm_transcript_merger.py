@@ -29,6 +29,28 @@ def _format_time_str(h, m, s, ms) -> str:
     return f"{h:02}:{m:02}:{s:02}.{ms:03}"
 
 
+def _generate_unique_speaker_id(original_speaker_id: str, chunk_number: int) -> str:
+    """
+    Generated new speaker id respectively to the number of chunk where it is located.
+    It is done in order to distinguish two speakers with the same ids, which are in different chunks (as they
+    are different speakers).
+    SPEAKER_<num> -> SPEAKER_<chunk_num>_<num>
+
+    For example, new speaker id for SPEAKER_2 in chunk 1 will be: SPEAKER_1_2
+
+    Args:
+        original_speaker_id (str): Current speaker id.
+        chunk_number (int): The chunk number.
+    Returns:
+        str: New speaker id.
+    """
+    match_num = re.search(r"SPEAKER_(\d+)", original_speaker_id)
+    if match_num:
+        old_id = match_num.group(1)
+        return f"SPEAKER_{chunk_number}_{old_id}"
+    return original_speaker_id
+
+
 class LLMTranscriptMerger:
     """
     This class is used for reading and parsing output (full transcription for a single audio/movie) from the LLM.
@@ -73,13 +95,14 @@ class LLMTranscriptMerger:
         hour, minute, second, ms = 0, int(parts[-3]), int(parts[-2]), int(parts[-1])
         return hour, minute, second, ms
 
-    def read_raw_transcript_file_from_llm(self, txt_file_path: str, txt_output_file_path: str):
+    def read_raw_transcript_file_from_llm_and_set_proper_format(self, txt_file_path: str, txt_output_file_path: str):
         """
-        Reads and parses raw file, provided by LLM, in order to set clean structure of it.
+        Reads and parses raw file, provided by LLM, in order to set clean structure of it (this includes setting
+        proper timecodes for each replica and dealing with overlap zones).
         Writes new transcript to another file with proper timecodes
         """
         txt_file_path = os.path.abspath(txt_file_path)
-        #speaker_id, speech, chunk_id = None, None, 0
+        # delete file if such exists in order to start with new file
         FileUtils.delete_file(txt_output_file_path)
 
         with open(txt_file_path, "r") as raw_file:
@@ -91,43 +114,17 @@ class LLMTranscriptMerger:
                 chunk = "\n".join(group)
                 all_chunks.append(chunk)
 
-        # for line in lines:
-        #     print(f"\nLINE:\n{line}")
-        #
-        #     # get the chunk number if it is line with this information
-        #     if line.startswith("-- CHUNK "):
-        #         chunk_id = int(re.findall(r"\d+", line)[0])
-        #         continue
-        #
-        #     timecodes = re.findall(r"\[(.*?)]", line)[0]  # get everything between '[' and ']'
-        #     timecode_start, timecode_end = timecodes.split(" - ")
-        #     timecode_start = self._parse_timecode(timecode_start)
-        #     timecode_end = self._parse_timecode(timecode_end)
-        #
-        #     # set to proper timecode (according to the whole movie)
-        #     timecode_start_h, timecode_start_m, timecode_start_s, timecode_start_ms = self._set_to_proper_timecode(
-        #         chunk_id,
-        #         timecode_start)
-        #
-        #     timecode_end_h, timecode_end_m, timecode_end_s, timecode_end_ms = self._set_to_proper_timecode(chunk_id,
-        #                                                                                                    timecode_end)
-        #
-        #     speaker_id = _get_speaker(line)
-        #     speech = _get_speech(line)
-        #
-        #     output_line = (
-        #         f"{speaker_id} | {timecode_start_h}:{timecode_start_m}:{timecode_start_s}.{timecode_start_ms}"
-        #         f" --> {timecode_end_h}:{timecode_end_m}:{timecode_end_s}.{timecode_end_ms} | "
-        #         f"{speech}")
-
-        final_lines = self._remove_expressive_overlap_speech(all_chunks)
+        final_lines = self._remove_excessive_overlap_speech(all_chunks)
         # write (append) to a new file
         with open(txt_output_file_path, 'a') as output_file:
             for line in final_lines:
                 output_file.write(f"{line}\n")
 
-    def _remove_expressive_overlap_speech(self, raw_chunks: list[str]) -> list[str]:
+    def _remove_excessive_overlap_speech(self, raw_chunks: list[str]) -> list[str]:
         final_lines = []
+
+        #last_accepted_end_ms = -1
+
         for i, chunk_text in enumerate(raw_chunks):
             lines = chunk_text.strip().split("\n")
             chunk_offset_ms = i * self.step_ms
@@ -160,9 +157,16 @@ class LLMTranscriptMerger:
                                  f"{end_time_formatted}]")
 
                 speaker = _get_speaker(line)
+                speaker = _generate_unique_speaker_id(speaker, i)  # get new speaker id
                 speech = _get_speech(line)
+
+                # if real_timecode_end <= last_accepted_end_ms:
+                #     print(f"not adding: {start_time_formatted} - {end_time_formatted}: {speech}")
+                    #continue
 
                 final_line_in_ts = f"{speaker} | {new_timecodes} | {speech}"
                 final_lines.append(final_line_in_ts)
+
+                #last_accepted_end_ms = real_timecode_end
 
         return final_lines
