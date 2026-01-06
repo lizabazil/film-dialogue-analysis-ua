@@ -2,11 +2,13 @@ import cv2
 import numpy as np
 from src.utils.time_utils import TimeUtils
 import subprocess
+import os
 
 
 class VideoUtils:
     @staticmethod
-    def take_screenshot(video_path: str, target_h: float, target_m: float, target_s: float, target_ms: float) \
+    def take_screenshot(video_path: str, target_h: float, target_m: float, target_s: float, target_ms: float,
+                        save_path: str = "") \
             -> np.ndarray | None:
         target_time = TimeUtils.convert_to_ms(target_h, target_m, target_s, target_ms)
         cam = cv2.VideoCapture(video_path)
@@ -18,8 +20,10 @@ class VideoUtils:
         success, image = cam.read()
         cam.release()
         if success:
+            if save_path != "":
+                save_path = os.path.abspath(save_path)
+                cv2.imwrite(save_path, image)
             return image
-            #cv2.imwrite("data/screenshots/screen.jpg", image)
         return None
 
     @staticmethod
