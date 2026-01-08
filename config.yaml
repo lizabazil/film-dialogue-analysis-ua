@@ -2,6 +2,7 @@ speaker_enrichment:
   # models for identifying speakers' gender
   audio_model_name: ""
   image_model_name: "IDEA-Research/grounding-dino-base"
+  image_classification_model_name: "openai/clip-vit-large-patch14"
 
   voting_weights:  # weights to give each of the approaches when combining results
     audio: 0.0   # by audio
@@ -14,7 +15,7 @@ llm_transcriber:
   overlap_in_min: 1    # overlap between audio chunks to avoid cutting sentences
   api_keys_config:
     env_variables_names:
-      #- "GEMINI_API_KEY_1"
+      - "GEMINI_API_KEY_1"
       - "GEMINI_API_KEY_2"
       - "GEMINI_API_KEY_3"
       - "GEMINI_API_KEY_4"
