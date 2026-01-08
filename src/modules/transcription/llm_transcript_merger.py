@@ -51,7 +51,7 @@ def _generate_unique_speaker_id(original_speaker_id: str, chunk_number: int) -> 
     return original_speaker_id
 
 
-class LLMTranscriptMerger:
+class LLMTranscriptParser:
     """
     This class is used for reading and parsing output (full transcription for a single audio/movie) from the LLM.
     It creates new text file with cleaned transcript and proper timecodes.

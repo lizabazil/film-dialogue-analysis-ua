@@ -65,9 +65,8 @@ class LLMTranscriber:
 
     TimeInterval = tuple[float, float]  # type alias for simplifying structure
 
-    def __init__(self, full_video_path: str, config: dict, txt_file_path_for_transcript: str):
+    def __init__(self, config: dict):
         self.model_name = config["llm_transcriber"]["model_name"]
-        self.full_video_path = full_video_path
         self.model = None
         self.requirements_to_response = (
             'Вимоги до виводу:\n'
@@ -100,13 +99,12 @@ class LLMTranscriber:
         #     'Не пиши оригінальний текст.'
         # )
 
-        self.txt_file_path_for_transcript = txt_file_path_for_transcript
+        self._txt_file_path_for_transcript = None
         self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 8)  # the whole audio file will be split in chunks each being 8 minutes
         self.overlap_in_min = config.get("llm_transcriber", {}).get("overlap_in_min", 1)
 
         # here will be saved the full audio file of the given video
         self.full_audio_path = "../../../data/temporary_files/full_audio.mp3"
-        AudioFileUtils.extract_audio_from_video(full_video_path, self.full_audio_path)
 
         self.temp_path_to_cut_audio_file = "../../../data/temporary_files/cut_audio.mp3"
         self.names_of_api_keys = config["llm_transcriber"]["api_keys_config"]["env_variables_names"]
@@ -116,8 +114,6 @@ class LLMTranscriber:
         self._take_next_key()  # initialize model with the very first api key
 
         self.prev_response = ""
-        # delete file in which will be transcript from LLM
-        FileUtils.delete_file(self.txt_file_path_for_transcript)
 
     def _take_next_key(self) -> None:
         """
@@ -250,13 +246,13 @@ class LLMTranscriber:
                 print(f"Got response from llm for chunk {i}") if response is not None else print(f"Didn't get "
                                                                                                  f"response from llm "
                                                                                                  f"for chunk {i}")
-            with open(self.txt_file_path_for_transcript, "a") as f:
+            with open(self._txt_file_path_for_transcript, "a") as f:
                 f.write(f"-- CHUNK {i} --\n")
                 f.write(response)
                 f.write("\n\n")
         return None
 
-    def write_full_transcript_to_the_file(self) -> None:
+    def write_full_transcript_to_the_file(self, full_video_path: str, txt_file_path_for_transcript: str) -> None:
         """
         Method for getting transcript of the whole audio.
         Firstly, this method detect the duration of the movie. Secondly, it splits the whole movie into the chunks of
@@ -266,9 +262,26 @@ class LLMTranscriber:
         Returns:
             None
         """
-        hours, minutes, seconds = VideoUtils.get_duration_of_video(self.full_video_path)
+        self.set_txt_file_path_for_transcript(txt_file_path_for_transcript)
+
+        # delete file in which will be transcript from LLM
+        FileUtils.delete_file(self._txt_file_path_for_transcript)
+
+        AudioFileUtils.extract_audio_from_video(full_video_path, self.full_audio_path)
+        hours, minutes, seconds = VideoUtils.get_duration_of_video(full_video_path)
         total_duration_in_ms = TimeUtils.convert_to_ms(hours, minutes, seconds, 0)
         chunks = self._get_chunk_intervals(total_duration_in_ms)
         print(f"Number of chunks: {len(chunks)}")
         self._send_chunks_to_llm(chunks)
         return None
+
+    def set_txt_file_path_for_transcript(self, value: str) -> None:
+        """
+        Setter for output transcript file path.
+
+        Args:
+             value (str): New path to be set.
+        Returns:
+            None
+        """
+        self._txt_file_path_for_transcript = value
