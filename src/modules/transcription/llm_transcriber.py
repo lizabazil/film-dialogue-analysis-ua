@@ -275,7 +275,7 @@ class LLMTranscriber:
         self._send_chunks_to_llm(chunks)
         return None
 
-    def set_txt_file_path_for_transcript(self, value: str) -> None:
+    def set_txt_file_path_for_transcript(self, value: str):
         """
         Setter for output transcript file path.
 

@@ -13,6 +13,7 @@ class AudioGenderExtractor(BasicGenderExtractor):
     This class is responsible for predicting the gender by audio segments. It uses a pre-trained audio classification
     model.
     """
+
     def __init__(self, config: dict):
         super().__init__()
         self.model_name = config.get("speaker_enrichment", {}).get("audio_model_name", "")
@@ -20,8 +21,10 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(self.model_name)
         self.model = AutoModelForAudioClassification.from_pretrained(self.model_name).to(self.device)
         self.sampling_rate = 16000  # the model needs this specific sampling rate
-        self.full_audio_path = ...  # TODO: add proper audio path
-        self.temp_cut_audio_path = ...  # TODO: add proper cut audio path for saving temporary segments
+        self.full_audio_path = "../../../data/temporary_files/full_audio_for_gender_extractor.mp3"
+        self.temp_cut_audio_path = "../../../data/temporary_files/cut_audio_for_gender_extractor.mp3"
+
+        self.custom_id_to_label = {"female": "woman", "male": "man"}
 
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
@@ -30,38 +33,29 @@ class AudioGenderExtractor(BasicGenderExtractor):
         # create audio file from video
         AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
 
-        # TODO: choose a couple of segments to analyze (if there are many)
-        labels = {"female": 0, "male": 0}
-        scores = {"max_female_score": -1, "max_male_score": -1}
-        for segment in ...:  # in chosen segments
-            # cut audio segment from full audio
-            AudioFileUtils.cut_audio_segment(self.full_audio_path, self.temp_cut_audio_path,
-                                             segment.start_h, segment.start_m, segment.start_s,
-                                             segment.start_ms,
-                                             segment.end_h, segment.end_m, segment.end_s,
-                                             segment.end_ms)
+        # cut audio segment from full audio
+        AudioFileUtils.cut_audio_segment(self.full_audio_path, self.temp_cut_audio_path,
+                                         segment.start_h, segment.start_m, segment.start_s,
+                                         segment.start_ms,
+                                         segment.end_h, segment.end_m, segment.end_s,
+                                         segment.end_ms)
 
-            # get speech array from the cut audio file
-            speech_array = self._prepare_speech_array_from_audio_file(self.temp_cut_audio_path)
-            inputs = self.feature_extractor(
-                speech_array,
-                sampling_rate=self.sampling_rate,
-                return_tensors="pt",
-            )
-            inputs = inputs.to(self.device)
-            logits, probs = self._use_model_to_get_prediction(inputs)
+        # get speech array from the cut audio file
+        speech_array = self._prepare_speech_array_from_audio_file(self.temp_cut_audio_path)
+        inputs = self.feature_extractor(
+            speech_array,
+            sampling_rate=self.sampling_rate,
+            return_tensors="pt",
+        )
+        inputs = inputs.to(self.device)
+        logits, probs = self._use_model_to_get_prediction(inputs)
 
-            pred_id = torch.argmax(logits, dim=-1).item()
-            score = probs[0][pred_id].item()
-            label = self.model.config.id2label[pred_id]
+        pred_id = torch.argmax(logits, dim=-1).item()
+        score = probs[0][pred_id].item()
+        label = self.model.config.id2label[pred_id]
+        custom_label = self.custom_id_to_label.get(label, label)
 
-            labels[label] += 1
-            scores["max_" + label + "_score"] = max(scores["max_" + label + "_score"], score)
-
-        final_label = max(labels, key=labels.get)  # to get the key with the highest value
-        final_score = scores["max_" + final_label + "_score"]
-
-        return {"label": final_label, "score": final_score}
+        return {"label": custom_label, "score": score}
 
     def _use_model_to_get_prediction(self, inputs) -> tuple:
         """
