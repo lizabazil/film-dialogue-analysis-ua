@@ -5,6 +5,7 @@ from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
 from src.utils.audio_file_utils import AudioFileUtils
 from src.utils.segment import Segment
+from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 
 
 class AudioGenderExtractor(BasicGenderExtractor):
@@ -12,9 +13,8 @@ class AudioGenderExtractor(BasicGenderExtractor):
     This class is responsible for predicting the gender by audio segments. It uses a pre-trained audio classification
     model.
     """
-    def __init__(self, config: dict, video_path: str):
+    def __init__(self, config: dict):
         super().__init__()
-        self.video_path = video_path
         self.model_name = config.get("speaker_enrichment", {}).get("audio_model_name", "")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(self.model_name)
@@ -23,13 +23,13 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.full_audio_path = ...  # TODO: add proper audio path
         self.temp_cut_audio_path = ...  # TODO: add proper cut audio path for saving temporary segments
 
-        # create audio file from video
-        AudioFileUtils.extract_audio_from_video(self.video_path, self.full_audio_path)
-
-    def predict_gender(self, segments: list[Segment]) -> dict | None:
+    def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
         This method is designed for many segments belonging to one speaker.
         """
+        # create audio file from video
+        AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
+
         # TODO: choose a couple of segments to analyze (if there are many)
         labels = {"female": 0, "male": 0}
         scores = {"max_female_score": -1, "max_male_score": -1}
