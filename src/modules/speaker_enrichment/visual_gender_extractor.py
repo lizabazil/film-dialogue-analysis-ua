@@ -1,7 +1,8 @@
 # will be using image-to-text model to identify person on the image
 from basic_gender_extractor import BasicGenderExtractor
 import torch
-from transformers import (AutoProcessor, AutoModelForZeroShotObjectDetection, CLIPProcessor, CLIPModel)
+from transformers import (AutoModel, AutoProcessor, AutoModelForZeroShotObjectDetection, CLIPProcessor,
+                          CLIPModel)
 from PIL import Image
 import cv2
 import numpy as np
@@ -33,7 +34,8 @@ class VisualGenderExtractor(BasicGenderExtractor):
         """
         Predicts the speaker's gender using visual data from video segments and an image-to-text model.
         Returns:
-            dict | None: The dictionary is in format {"label": ..., "score": ...}
+            dict | None: The dictionary is in format {"label": ..., "score": ...}. Returns None in case if no people
+            were found on the image at all.
         """
         middle_h, middle_m, middle_s, middle_ms = TimeUtils.get_middle_point(
             segment.start_h, segment.start_m, segment.start_s, segment.start_ms,
@@ -58,7 +60,8 @@ class VisualGenderExtractor(BasicGenderExtractor):
                                                          best_box_list[0], best_box_list[1], best_box_list[2],
                                                          best_box_list[3])
             # send the biggest box to the classification model
-            label, score = self.use_clip_classification_model(self.save_cropped_image_path)
+            #label, score = self.use_clip_classification_model(self.save_cropped_image_path)
+            label, score = self._use_siglip_classification_model(self.save_cropped_image_path)
             return {"label": label, "score": score}
         return None
 
@@ -98,32 +101,33 @@ class VisualGenderExtractor(BasicGenderExtractor):
 
         return result["boxes"], result["scores"], result["text_labels"]
 
-    def use_clip_classification_model(self, image_path: str) -> tuple[str, float]:
-        """
-        Uses image classification model https://huggingface.co/openai/clip-vit-large-patch14 to get prediction
-        whether there is a woman or a man in the chosen piece of image.
+    def _use_siglip_classification_model(self, image_path: str) -> tuple[str, float]:
+        model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384")
+        print('Model loaded!')
+        processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
+        print('Processor loaded!')
 
-        Returns:
-            tuple[str, float]: String either "woman" either "man" and "score" of type float.
-        """
         image = Image.open(image_path)
-        inputs = self.classification_processor(text=["a photo of a woman", "a photo of a man"], images=image,
-                                               return_tensors="pt",
-                                               padding=True)
-        outputs = self.classification_model(**inputs)
-        logits_per_image = outputs.logits_per_image  # this is the image-text similarity score
-        probs = logits_per_image.softmax(dim=1)  # we can take the softmax to get the label probabilities
-        print(f"Clip model results: {probs}")
-        print(f"Clip model results type: {type(probs)}")
-        from_tensor = probs.detach().numpy()
-        real_probs_woman, real_probs_man = from_tensor[0, 0], from_tensor[0, 1]
-        print(f"Man: {real_probs_man}")
-        print(f"woman: {real_probs_woman}")
+        texts = ["A photo of a woman", "A photo of a man"]
+        inputs = processor(text=texts, images=image, padding="max_length", return_tensors="pt")
+        print('Inputs prepared!')
 
-        if real_probs_woman >= real_probs_man:
-            return "woman", real_probs_woman
+        with torch.no_grad():
+            outputs = model(**inputs)
+
+        logits_per_image = outputs.logits_per_image
+        probs = torch.sigmoid(logits_per_image)  # these are the probabilities
+
+        print(f"{probs[0][0]}% that image 0 is '{texts[0]}'")
+        print(f"{probs[0][1]}% that image 0 is '{texts[1]}'")
+
+        woman_prob = probs[0][0].item()
+        man_prob = probs[0][1].item()
+
+        if woman_prob >= man_prob:
+            return "woman", woman_prob
         else:
-            return "man", real_probs_man
+            return "man", man_prob
 
     @staticmethod
     def _get_area_of_bounding_box(bbox: list) -> float:
