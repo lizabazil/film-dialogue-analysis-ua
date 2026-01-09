@@ -37,3 +37,21 @@ class TimeUtils:
         middle_time_in_ms = (start_time_in_ms + end_time_in_ms) / 2
         (h, m, s, ms) = TimeUtils.convert_ms_to_normal(middle_time_in_ms)
         return h, m, s, ms
+
+    @staticmethod
+    def format_time_str(h: int, m: int, s: int, ms: int) -> str:
+        """
+        Formats into proper string. For example, with given input h=1, m=21, s=34, ms=334, the result will be string:
+        '01:21:34.334'.
+
+        Args:
+            h (int): Hour.
+            m (int): Minute.
+            s (int): Second.
+            ms (int): Millisecond.
+
+        Returns:
+            str: Formatted string.
+        """
+        return f"{h:02}:{m:02}:{s:02}.{ms:03}"
+
