@@ -104,13 +104,15 @@ class LLMTranscriptParser:
 
                 start_str, end_str = match.groups()
 
+                thirty_sec_in_ms = TimeUtils.convert_to_ms(0, 0, 30, 0)
+
                 real_timecode_start_ms = TimeUtils.convert_to_ms(*self._parse_timecode(start_str))
                 real_timecode_end_ms = TimeUtils.convert_to_ms(*self._parse_timecode(end_str))
 
                 real_timecode_start = real_timecode_start_ms + chunk_offset_ms
                 real_timecode_end = real_timecode_end_ms + chunk_offset_ms
 
-                if real_timecode_start >= cutoff_ms:
+                if (real_timecode_start >= cutoff_ms + thirty_sec_in_ms) or (real_timecode_start_ms < thirty_sec_in_ms):
                     continue
 
                 start_time_tuple = TimeUtils.convert_ms_to_normal(real_timecode_start)
