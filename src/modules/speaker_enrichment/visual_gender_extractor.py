@@ -1,8 +1,7 @@
 # will be using image-to-text model to identify person on the image
 from basic_gender_extractor import BasicGenderExtractor
 import torch
-from transformers import (AutoModel, AutoProcessor, AutoModelForZeroShotObjectDetection, CLIPProcessor,
-                          CLIPModel)
+from transformers import (AutoModel, AutoProcessor, AutoModelForZeroShotObjectDetection)
 from PIL import Image
 import cv2
 import numpy as np
@@ -26,9 +25,10 @@ class VisualGenderExtractor(BasicGenderExtractor):
         self.processor = AutoProcessor.from_pretrained(self.model_name)
         self.model = AutoModelForZeroShotObjectDetection.from_pretrained(self.model_name).to(self.device)
 
-        self.classification_model = CLIPModel.from_pretrained(config.get("speaker_enrichment", {}).
-                                                              get("image_classification_model_name", ""))
-        self.classification_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
+        self.siglip_model = AutoModel.from_pretrained(config.get("speaker_enrichment", {}).
+                                                              get("siglip_model_name", ""))
+        self.siglip_processor = AutoProcessor.from_pretrained(config.get("speaker_enrichment", {})
+                                                              .get("siglip_processor", ""))
 
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
@@ -61,7 +61,7 @@ class VisualGenderExtractor(BasicGenderExtractor):
                                                          best_box_list[3])
             # send the biggest box to the classification model
             #label, score = self.use_clip_classification_model(self.save_cropped_image_path)
-            label, score = self._use_siglip_classification_model(self.save_cropped_image_path)
+            label, score = self._use_siglip_model(self.save_cropped_image_path)
             return {"label": label, "score": score}
         return None
 
@@ -101,19 +101,25 @@ class VisualGenderExtractor(BasicGenderExtractor):
 
         return result["boxes"], result["scores"], result["text_labels"]
 
-    def _use_siglip_classification_model(self, image_path: str) -> tuple[str, float]:
-        model = AutoModel.from_pretrained("google/siglip-so400m-patch14-384")
-        print('Model loaded!')
-        processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")
-        print('Processor loaded!')
+    def _use_siglip_model(self, image_path: str) -> tuple[str, float]:
+        """
+        To use Siglip in order to determine whether there is a woman or a mam on the image.
 
+        Args:
+            image_path (str): Path to the given image.
+
+        Returns:
+            tuple[str, float]: To use Siglip model to determine whether there is a woman or a man in the image.
+            A tuple, where the string is either 'woman' or 'man', with the probability (float) of this
+            gender being in the image. The returned name of gender has a higher probability of being in the image
+            than the other.
+        """
         image = Image.open(image_path)
         texts = ["A photo of a woman", "A photo of a man"]
-        inputs = processor(text=texts, images=image, padding="max_length", return_tensors="pt")
-        print('Inputs prepared!')
+        inputs = self.siglip_processor(text=texts, images=image, padding="max_length", return_tensors="pt")
 
         with torch.no_grad():
-            outputs = model(**inputs)
+            outputs = self.siglip_model(**inputs)
 
         logits_per_image = outputs.logits_per_image
         probs = torch.sigmoid(logits_per_image)  # these are the probabilities
