@@ -1,8 +1,9 @@
 speaker_enrichment:
   # models for identifying speakers' gender
-  audio_model_name: ""
+  audio_model_name: "alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech"
   image_model_name: "IDEA-Research/grounding-dino-base"
-  image_classification_model_name: "openai/clip-vit-large-patch14"
+  siglip_model_name: "google/siglip-so400m-patch14-384"
+  siglip_processor: "google/siglip-so400m-patch14-384"
 
   voting_weights:  # weights to give each of the approaches when combining results
     audio: 0.0   # by audio
@@ -25,3 +26,13 @@ llm_transcriber:
       - "GEMINI_API_KEY_8"
       - "GEMINI_API_KEY_9"
       - "GEMINI_API_KEY_10"
+      - "GEMINI_API_KEY_11"
+      - "GEMINI_API_KEY_12"
+      - "GEMINI_API_KEY_13"
+      - "GEMINI_API_KEY_14"
+      - "GEMINI_API_KEY_15"
+      - "GEMINI_API_KEY_16"
+      - "GEMINI_API_KEY_17"
+      - "GEMINI_API_KEY_18"
+      - "GEMINI_API_KEY_19"
+      - "GEMINI_API_KEY_20"
