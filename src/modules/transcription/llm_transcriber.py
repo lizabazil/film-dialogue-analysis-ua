@@ -232,7 +232,7 @@ class LLMTranscriber:
                 f.write(response)
                 f.write("\n\n")
 
-        # delete temporaty files with audio to release space
+        # delete temporary files with audio to release space
         FileUtils.delete_file(self.full_audio_path)
         FileUtils.delete_file(self.temp_path_to_cut_audio_file)
         return None
