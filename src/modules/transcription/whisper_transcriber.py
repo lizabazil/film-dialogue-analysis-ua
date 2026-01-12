@@ -36,7 +36,15 @@ class WhisperTranscriber:
             return_timestamps=True,
         )
 
-    def get_whisper_transcription(self, audio_path):
+    def get_whisper_transcription(self, audio_path: str) -> str:
+        """
+        Get text from given audio file.
+
+        Args:
+            audio_path (str): Path to audio file.
+        Returns:
+             str: Textual result from Whisper model.
+        """
         result = self.pipe(audio_path,
                            generate_kwargs={
                                "task": "transcribe",
