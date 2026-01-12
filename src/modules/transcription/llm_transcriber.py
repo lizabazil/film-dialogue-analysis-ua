@@ -80,24 +80,6 @@ class LLMTranscriber:
             'Обов\'язково вказуй мілісекунди.\n'
             '5. Переклад: Цільова мова — виключно УКРАЇНСЬКА. Якщо наявна інша мова - перекладай літературно, одразу з аудіо. '
             'Не пиши оригінальний текст.')
-        # self.requirements_to_response = (
-        #     'Вимоги до виводу:\n'
-        #     '1. Формат виводу: Поверни результат у вигляді простого тексту.\n'
-        #     '   Формат: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
-        #     '   ВАЖЛИВО: Використовуй ВІДНОСНИЙ час аудіофайлу (початок 00:00:00.000).\n'
-        #
-        #     '2. Розділення мовців (НАЙВИЩИЙ ПРІОРИТЕТ): \n'
-        #     '   - Твоє головне завдання — детектувати ЗМІНУ мовця. \n'
-        #     '   - ЩОРАЗУ, коли змінюється голос, починає говорити інша людина — РОБИ НОВИЙ РЯДОК з новим таймкодом.\n'
-        #     '   - Навіть якщо це одне слово ("Так", "Ага", "Ні") іншої людини — це окремий рядок.\n'
-        #     '   - Не бійся створювати багато коротких рядків. Краще розбити репліку одного мовця на дві частини, ніж злити двох мовців в одну.\n'
-        #     '   - Використовуй мітки SPEAKER_01, SPEAKER_02, щоб просто показати чергування. Не обов\'язково, щоб SPEAKER_01 на початку файлу був тим самим SPEAKER_01 в кінці.\n'
-        #
-        #     '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу та немовленнєві звуки.\n'
-        #     '4. Точність часу: Таймкод початку — момент ПЕРШОГО звуку. Таймкод кінця — момент ОСТАННЬОГО звуку.\n'
-        #     '5. Переклад: Цільова мова — виключно УКРАЇНСЬКА. Якщо наявна інша мова - перекладай літературно, одразу з аудіо. '
-        #     'Не пиши оригінальний текст.'
-        # )
 
         self._txt_file_path_for_transcript = None
         self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 8)  # the whole audio file will be split in chunks each being 8 minutes
@@ -190,7 +172,6 @@ class LLMTranscriber:
                     [
                         uploaded_file,
                         self.requirements_to_response,
-                        #create_prompt_with_previous_context(get_last_n_lines_from_response(self.prev_response, 30))
                     ]
                 )
                 text_response = response.text
@@ -250,6 +231,10 @@ class LLMTranscriber:
                 f.write(f"-- CHUNK {i} --\n")
                 f.write(response)
                 f.write("\n\n")
+
+        # delete temporaty files with audio to release space
+        FileUtils.delete_file(self.full_audio_path)
+        FileUtils.delete_file(self.temp_path_to_cut_audio_file)
         return None
 
     def write_full_transcript_to_the_file(self, full_video_path: str, txt_file_path_for_transcript: str) -> None:
