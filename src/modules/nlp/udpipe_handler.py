@@ -51,7 +51,7 @@ class UDPipeHandler:
         udpipe_result = self.process_text(content)
         if output_file_path:   # save to the file
             with open(output_file_path, "w") as file:
-                json.dump(udpipe_result, file)
+                json.dump(udpipe_result, file, indent=4, ensure_ascii=False)
 
         return str(udpipe_result)
 
