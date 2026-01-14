@@ -8,12 +8,14 @@ class TokenKeys:
 
 class Upos:
     VERB = "VERB"
+    PRON = "PRON"
 
 
 class FeatKeys:
     TENSE = "Tense"
     PERSON = "Person"
     GENDER = "Gender"
+    NUMBER = "Number"
 
 
 class FeatValues:
@@ -28,6 +30,9 @@ class FeatValues:
     # gender
     MASC = "Masc"
     FEM = "Fem"
+
+    # number
+    SING = "Sing"
 
 class Deprel:
     NSUBJ = "nsubj"

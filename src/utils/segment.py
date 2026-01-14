@@ -1,3 +1,7 @@
+from typing import Optional, Any
+from conllu import TokenList
+
+
 class Segment:
     """
     Class to represent segment. It contains such information as speaker_id, start and end timecode for speech,
@@ -16,4 +20,5 @@ class Segment:
         self.end_ms = end_ms
         self.speech = speech
         self.gender = gender   # 'female', 'male' or 'unknown'
+        self.nlp_data: Optional[list[TokenList]] = None
 
