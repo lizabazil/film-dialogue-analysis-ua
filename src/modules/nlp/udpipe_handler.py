@@ -40,7 +40,7 @@ class UDPipeHandler:
         }
         return self._send_request(data)
 
-    def process_file(self, input_file_path: str, output_file_path: str = None) -> str:
+    def process_file(self, input_file_path: str, output_file_path: str = None) -> dict:
         """
         Reads file with given path, processes its content with UDPipe pipeline, and saves the result to the output file
         optionally.
@@ -53,7 +53,7 @@ class UDPipeHandler:
             with open(output_file_path, "w") as file:
                 json.dump(udpipe_result, file, indent=4, ensure_ascii=False)
 
-        return str(udpipe_result)
+        return udpipe_result
 
     def _check_connection(self) -> bool:
         """
