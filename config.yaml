@@ -1,3 +1,6 @@
+speech_to_text_model:
+  whisper_model_name: "openai/whisper-large-v3"
+
 speaker_enrichment:
   # models for identifying speakers' gender
   audio_model_name: "alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech"
