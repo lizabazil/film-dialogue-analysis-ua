@@ -1,6 +1,7 @@
 # TODO: implement
 from src.utils.segment import Segment
 from conllu.models import Token, TokenList
+from src.modules.speaker_enrichment.constants import TokenKeys, Upos, FeatKeys, FeatValues, Deprel
 
 
 class TextGenderExtractor:
@@ -11,18 +12,24 @@ class TextGenderExtractor:
         if target_segment.nlp_data:  # if we have udpipe parsed data
             for sentence in target_segment.nlp_data:
                 for token in sentence:
-                    pos = token["upos"]   # part of speech
-                    feats = token["feats"]
-                    head_id = token["head"]
-                    id = token["id"]
+                    head_id = token.get(TokenKeys.HEAD)
 
 
         return None
 
     @staticmethod
-    def _get_head_by_id(sentence: TokenList, head: int) -> Token | None:
+    def _get_token_by_id_in_the_sentence(sentence: TokenList, token_id: int) -> Token | None:
+        """
+        Retrieves a token from the sentence based on its CoNLL-U ID.
+
+        Args:
+            sentence (TokenList): The parsed sentence containing the tokens.
+            token_id (int): The linguistic ID of the token to search for.
+        Returns:
+            Token | None: The matching Token object if found, otherwise None.
+        """
         for token in sentence:
-            if token["id"] == head:
+            if token.get(TokenKeys.ID) == token_id:
                 return token
         return None
 
@@ -36,8 +43,8 @@ class TextGenderExtractor:
         Returns:
             bool: True if it is a past tense verb, False otherwise.
         """
-        feats = token.get("feats")
-        return feats and feats.get("Tense", "") == 'Past'
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.TENSE, "") == FeatValues.PAST
 
     @staticmethod
     def _is_present_time(token: Token) -> bool:
@@ -50,8 +57,8 @@ class TextGenderExtractor:
             bool: True if it is a present tense verb, False otherwise.
         """
 
-        feats = token.get("feats")
-        return feats and feats.get("Tense", "") == 'Pres'
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.TENSE, "") == FeatValues.PRES
 
     @staticmethod
     def _is_verb(token: Token) -> bool:
@@ -63,7 +70,7 @@ class TextGenderExtractor:
         Returns:
             bool: True if it is a verb, False otherwise.
         """
-        return token.get("upos") == "VERB"
+        return token.get(TokenKeys.UPOS, "") == Upos.VERB
 
     @staticmethod
     def _is_first_person(token: Token) -> bool:
@@ -78,8 +85,8 @@ class TextGenderExtractor:
         Returns:
             bool: True if the token indicates 1st person (Person='1'), False otherwise.
         """
-        feats = token.get("feats")
-        return feats and feats.get("Person", "") == "1"
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.PERSON, "") == FeatValues.FIRST
 
     @staticmethod
     def _is_second_person(token: Token) -> bool:
@@ -94,9 +101,8 @@ class TextGenderExtractor:
         Returns:
             bool: True if the token indicates 2nd person (Person='2'), False otherwise.
         """
-
-        feats = token.get("feats")
-        return feats and feats.get("Person", "") == "2"
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.PERSON, "") == FeatValues.SECOND
 
     @staticmethod
     def _is_third_person(token: Token) -> bool:
@@ -111,9 +117,8 @@ class TextGenderExtractor:
         Returns:
             bool: True if the token indicates 3rd person (Person='3'), False otherwise.
         """
-
-        feats = token.get("feats")
-        return feats and feats.get("Person", "") == "3"
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.PERSON, "") == FeatValues.THIRD
 
     @staticmethod
     def _is_male(token: Token) -> bool:
@@ -128,8 +133,8 @@ class TextGenderExtractor:
         Returns:
             bool: True if the token indicates masculine gender (Gender='Masc'), False otherwise.
         """
-        feats = token.get("feats")
-        return feats and feats.get("Gender", "") == "Masc"
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.GENDER, "") == FeatValues.MASC
 
     @staticmethod
     def _is_female(token: Token) -> bool:
@@ -144,6 +149,18 @@ class TextGenderExtractor:
         Returns:
             bool: True if the token indicates female gender (Gender='Fem'), False otherwise.
         """
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.GENDER, "") == FeatValues.FEM
 
-        feats = token.get("feats")
-        return feats and feats.get("Gender", "") == "Fem"
+    @staticmethod
+    def _is_nominal_subject(token: Token) -> bool:
+        """
+        Checks if the token plays the role of a nominal subject in the sentence.
+        This method inspects the dependency relation ('deprel') of the token to see if it equals 'nsubj'.
+
+        Args:
+            token (Token): Given token with linguistic features (parsed by conllu).
+        Returns:
+            bool: True if the token is a nominal subject ('nsubj'), False otherwise.
+        """
+        return token.get(TokenKeys.DEPREL, "") == Deprel.NSUBJ
