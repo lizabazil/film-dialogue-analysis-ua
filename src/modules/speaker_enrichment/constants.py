@@ -9,6 +9,8 @@ class TokenKeys:
 class Upos:
     VERB = "VERB"
     PRON = "PRON"
+    ADJ = "ADJ"  # adjective
+    NOUN = "NOUN"
 
 
 class FeatKeys:
