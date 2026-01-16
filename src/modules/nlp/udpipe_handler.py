@@ -17,6 +17,10 @@ class UDPipeHandler:
     def _send_request(self, data: dict) -> dict:
         """
         Private method to make request.
+        Args:
+            data (dict): Data with info such as tokenizer, parser etc. which are needed for proper request.
+        Returns:
+            dict: Result from the UDPipe in the dict structure.
         """
         url = f"{self.api_url}/process"
 
@@ -31,6 +35,10 @@ class UDPipeHandler:
     def process_text(self, text: str) -> dict:
         """
         Send text to the server udpipe and returns result in a dict format.
+        Args:
+            text (str): Input text.
+        Returns:
+            dict: Result from the UDPipe in the dict structure.
         """
         data = {
             "tokenizer": "",
@@ -44,6 +52,12 @@ class UDPipeHandler:
         """
         Reads file with given path, processes its content with UDPipe pipeline, and saves the result to the output file
         optionally.
+        Args:
+            input_file_path (str): Path to the input text file.
+            output_file_path (str): Path to the JSON output file. In None is passes, then it is not written to the
+            file.
+        Returns:
+            dict: Result from the UDPipe in the dict structure.
         """
         with open(input_file_path, 'r') as file:
             content = file.read()
