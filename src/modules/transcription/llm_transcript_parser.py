@@ -211,6 +211,8 @@ class LLMTranscriptParser:
             spoken text.
         """
         speech = speech.strip()
+        if not speech:
+            return False
         match_one = re.search(r"\(.*\)", speech)
         match_two = re.search(r"\[.*\]", speech)
         return False if match_one or match_two else True
