@@ -131,6 +131,8 @@ class LLMTranscriptParser:
                 is_valid_speech = self._validate_speech_text(speech)
                 if not is_valid_speech:
                     continue
+                if not speaker:
+                    continue
 
                 final_line_in_ts = f"{speaker} | {new_timecodes} | {speech}"
                 final_lines.append(final_line_in_ts)
