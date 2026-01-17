@@ -1,3 +1,6 @@
+import re
+
+
 class TimeUtils:
     """
     This class provides utility methods for timecode conversions and calculations.
@@ -55,3 +58,19 @@ class TimeUtils:
         """
         return f"{h:02}:{m:02}:{s:02}.{ms:03}"
 
+    @staticmethod
+    def get_h_m_s_ms_from_the_string(timecode: str) -> tuple[int, int, int, int] | None:
+        """
+        Get hour, minute, second and millisecond from the string in format: 01:45:38.702.
+        Args:
+             timecode (str): String timecode. Must be in format like 01:45:38.702.
+        Returns:
+            tuple[int, int, int, int] | None: Hour, minute, second and millisecond from the given string. Returns
+            None if an error has occured.
+        """
+        h, m, s, ms = re.split(r"[:.]", timecode)
+        try:
+            return int(h), int(m), int(s), int(ms)
+        except ValueError as e:
+            print(f"Error with getting time from the string: {e}")
+        return None
