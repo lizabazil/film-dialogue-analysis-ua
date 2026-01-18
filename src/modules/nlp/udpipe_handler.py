@@ -32,11 +32,13 @@ class UDPipeHandler:
             print(f"Could not get response from the server: {e}")
             raise Exception()
 
-    def process_text(self, text: str) -> dict:
+    def process_text(self, text: str, output_json_file_path: str = None) -> dict:
         """
         Send text to the server udpipe and returns result in a dict format.
         Args:
             text (str): Input text.
+            output_json_file_path (str): An optional argument for writing the result to the JSON file. If None is given,
+            the result is not being written to the file.
         Returns:
             dict: Result from the UDPipe in the dict structure.
         """
@@ -46,7 +48,11 @@ class UDPipeHandler:
             "parser": "",
             "data": text,
         }
-        return self._send_request(data)
+        res = self._send_request(data)
+        if output_json_file_path:
+            with open(output_json_file_path, "w") as f:
+                json.dump(res, f, indent=4, ensure_ascii=False)
+        return res
 
     def process_file(self, input_file_path: str, output_file_path: str = None) -> dict:
         """
