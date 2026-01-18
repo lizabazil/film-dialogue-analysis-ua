@@ -1,3 +1,5 @@
+import re
+
 from src.modules.nlp.udpipe_handler import UDPipeHandler
 from src.modules.nlp.converters import UdpipeJsonToConlluConverter
 from src.modules.nlp.nlp_aligner import NlpAligner
@@ -56,9 +58,13 @@ class NLPUDPipeParser:
         return segments_with_udpipe_data
 
     def _prepare_text_for_udpipe(self, segments: list[Segment]) -> None:
-        with open(self.temp_file_for_only_text, "w") as f:
+        # using positive lookbehind
+        regex_to_detect_end_of_sentence = re.compile(r"(?<=[.!?])\s+(?=[A-ZА-ЩЬЮЯҐЄІЇ])")
+
+        with open(self.temp_file_for_only_text, "w", encoding="utf-8") as f:
             for segment in segments:
-                f.write(segment.speech)
+                current_speech = regex_to_detect_end_of_sentence.sub("\n", segment.speech)
+                f.write(current_speech)
                 f.write("\n")
         return None
 
