@@ -15,7 +15,7 @@ class FileUtils:
         file_path = os.path.abspath(file_path)
         try:
             os.remove(file_path)
+            print(f"Deleted file {file_path}.")
         except OSError as e:
             print(f"Error while deleting the file {file_path}: {e}")
-        print(f"Deleted file {file_path}.")
         return None
