@@ -54,3 +54,29 @@ class VideoUtils:
         hour, minute = split[0], split[1]
         seconds = split[2].split(".")[0]
         return int(hour), int(minute), int(seconds)
+
+    @staticmethod
+    def get_subtitle_track_from_video(video_file_path: str, output_subtitle_path: str, subtitle_track_num: int = 0) -> None:
+        if not os.path.exists(video_file_path):
+            print(f"Error: video file does not exist: {video_file_path}")
+            return None
+        command = [
+            "ffmpeg",
+            "-y",
+            "-i", video_file_path,
+            "-map", f"0:s:{subtitle_track_num}",
+            output_subtitle_path
+        ]
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.exists(output_subtitle_path) and os.path.getsize(output_subtitle_path) > 0:
+                print(f"Created subtitle file {output_subtitle_path}")
+                return None
+            return None
+
+        except subprocess.CalledProcessError:
+            print(f"Warning: No subtitle track found or ffmpeg error for {video_file_path}")
+            return None
+        except Exception as e:
+            print(f"Error extracting subtitles: {e}")
+            return None
