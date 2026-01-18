@@ -1,3 +1,5 @@
+import re
+
 from src.utils.segment import Segment
 from src.utils.time_utils import TimeUtils
 
@@ -26,7 +28,11 @@ class RawTranscriptParser:
             speaker = line.split("|")[0].strip()
             timecode = line.split("|")[1].strip()
             timecode_start = timecode.split('-->')[0].strip()
+            timecode_start = self._remove_brackets(timecode_start)
+
             timecode_end = timecode.split('-->')[1].strip()
+            timecode_end = self._remove_brackets(timecode_end)
+
             speech = line.split('|')[2].strip()
 
             # get start hour, minute, second and ms
@@ -37,3 +43,16 @@ class RawTranscriptParser:
             segments.append(segment)
 
         return segments
+
+    @staticmethod
+    def _remove_brackets(timecode: str) -> str:
+        """
+        Removes brackets '[' or ']' from the string.
+        Args:
+            timecode: Timecode type string.
+
+        Returns:
+            str: String without brackets.
+
+        """
+        return re.sub(r"[\[\]]", "", timecode)
