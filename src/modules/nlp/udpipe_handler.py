@@ -43,7 +43,7 @@ class UDPipeHandler:
             dict: Result from the UDPipe in the dict structure.
         """
         data = {
-            "tokenizer": "",
+            "tokenizer": "presegmented",
             "tagger": "",
             "parser": "",
             "data": text,
