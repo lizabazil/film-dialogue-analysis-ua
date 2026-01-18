@@ -1,5 +1,5 @@
 import re
-
+import os
 from src.modules.nlp.udpipe_handler import UDPipeHandler
 from src.modules.nlp.converters import UdpipeJsonToConlluConverter
 from src.modules.nlp.nlp_aligner import NlpAligner
@@ -9,20 +9,15 @@ from src.utils.file_utils import FileUtils
 
 class NLPUDPipeParser:
     """
-    Read JSON file with UDPipe data, parses it and creates Segments objects from that data.
+    Read JSON file with UDPipe data, parses it and creates Segment objects from that data.
     """
-    def __init__(self, json_udpipe_file_name: str):
-        """
-        Args:
-            json_udpipe_file_name: Destination for the JSON file to store UDPipe output.
-        """
+    def __init__(self):
         self.udpipe_handler = UDPipeHandler()
         self.udpipe_json_to_conllu_converter = UdpipeJsonToConlluConverter()
         self.aligner = NlpAligner()
-        self.json_udpipe_file_name = json_udpipe_file_name  # this file will be containing UDPipe result
-        self.temp_file_for_only_text = "../../../temp_text_file.txt"  # TODO: improve
+        self.temp_file_for_only_text = "../../temp_text_file.txt"  # TODO: improve
 
-    def enrich_segments(self, segments: list[Segment]) -> list[Segment]:
+    def enrich_segments(self, segments: list[Segment], cached_json_path: str) -> list[Segment]:
         """
         Orchestrates the NLP enrichment pipeline for the provided speech segments.
 
@@ -40,18 +35,22 @@ class NLPUDPipeParser:
 
         Args:
             segments (list[Segment]): An ordered list of transcript segments to be processed.
+            cached_json_path (str): Path to a pre-computed UDPipe JSON file. If such file exists, the UDPipe processing
+             step is skipped, and data is loaded directly from this file. Otherwise, a fresh analysis is performed.
         Returns:
             list[Segment]: The input list of segments, where each segment has its `.nlp_data` attribute has
              corresponding linguistic analysis from the UDPipe.
         """
         self._delete_files_to_write_new_data()
 
-        # get the whole text for udpipe to the file
-        self._prepare_text_for_udpipe(segments)
-        # send it to the udpipe
-        self.udpipe_handler.process_file(self.temp_file_for_only_text, self.json_udpipe_file_name)
+        if not cached_json_path and not os.path.exists(cached_json_path):  # there is already a JSON file with UDPipe data
+            # get the whole text for udpipe to the file
+            self._prepare_text_for_udpipe(segments)
+            # send it to the udpipe
+            self.udpipe_handler.process_file(self.temp_file_for_only_text, cached_json_path)
+
         # convert from udpipe json to conllu tokenList objects
-        sentences = self.udpipe_json_to_conllu_converter.convert(self.json_udpipe_file_name)
+        sentences = self.udpipe_json_to_conllu_converter.convert(cached_json_path)
         # align (enrich each segment .nlp_data field)
         segments_with_udpipe_data = self.aligner.align(segments, sentences)
         # return result enriched segments
@@ -70,5 +69,4 @@ class NLPUDPipeParser:
 
     def _delete_files_to_write_new_data(self):
         FileUtils.delete_file(self.temp_file_for_only_text)
-        FileUtils.delete_file(self.json_udpipe_file_name)
         return None
