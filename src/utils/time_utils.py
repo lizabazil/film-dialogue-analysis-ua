@@ -1,4 +1,5 @@
 import re
+from src.utils.segment import Segment
 
 
 class TimeUtils:
@@ -74,3 +75,17 @@ class TimeUtils:
         except ValueError as e:
             print(f"Error with getting time from the string: {e}")
         return None
+
+    @staticmethod
+    def get_gap_duration(segment_1: Segment, segment_2: Segment) -> int:
+        """
+        Calculates gap between two segments (the gap between start of the second segment and end of the first segment.)
+        Args:
+            segment_1: First segment.
+            segment_2: Second segment.
+
+        Returns:
+            int: Rounded down number of seconds.
+        """
+        difference_in_ms = segment_2.total_ms_start - segment_1.total_ms_end
+        return int(difference_in_ms // 1000)
