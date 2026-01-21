@@ -1,25 +1,79 @@
-# TODO: implement
 from src.utils.segment import Segment
 from conllu.models import Token, TokenList
 from src.modules.speaker_enrichment.constants import TokenKeys, Upos, FeatKeys, FeatValues, Deprel
+from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 
 
 class TextGenderExtractor:
-    CONFIDENCE_DICT = {"adj": 0.8, "noun": 0.3}
+    CONFIDENCE_DICT = {"adj": 0.7, "noun": 0.3}
 
     def __init__(self):
         pass
 
-    def predict_gender(self, target_segment: Segment, neighboring_segments: list[Segment]) -> dict | None:
+    def predict_gender(self, target_segment: Segment, neighboring_segments: list[Segment]) -> (GenderExtractorReturnType
+                                                                                               | None):
         if target_segment.nlp_data:  # if we have udpipe parsed data
             for sentence in target_segment.nlp_data:
                 # for testing
                 print(f"detected by the _second_person_sing_past_time: "
-                      f"{TextGenderExtractor._second_person_sing_past_tense(sentence)}")
+                      f"{TextGenderExtractor._infer_gender_from_second_person_sing_past_tense(sentence)}")
+
+        from_neighbor = self._infer_gender_from_neighboring_segments(neighboring_segments)
+        from_target = self._infer_gender_from_target_segment(target_segment)
+        # TODO: add further logic
+        # Self + Verb > Neighbor + Verb > Self + Adj > Neighbor + Adj > Self + Noun
         return None
 
     @staticmethod
-    def _second_person_sing_past_tense(sentence: TokenList) -> str | None:
+    def _infer_gender_from_target_segment(target_segment: Segment) -> GenderExtractorReturnType | None:
+        found_genders_list = []  # for each sentence of the segment
+        if target_segment and target_segment.nlp_data:
+            for sentence in target_segment.nlp_data:
+                is_found_in_past_tense = TextGenderExtractor._infer_gender_from_first_person_sing_past_tense(sentence)
+                is_found_noun_or_adj = TextGenderExtractor._infer_gender_from_noun_or_adj_head(sentence, person=1)
+                if is_found_in_past_tense:
+                    found_genders_list.append({"gender": is_found_in_past_tense, "score": 1.0})
+
+                if is_found_noun_or_adj:
+                    gender, confidence = is_found_noun_or_adj
+                    found_genders_list.append({"gender": gender, "score": confidence})
+
+            if found_genders_list:
+                gender, score = TextGenderExtractor._get_gender_and_score_with_the_highest_score(found_genders_list)
+                return {"label": gender, "score": score}
+            else:
+                return None
+        return None
+
+    @staticmethod
+    def _infer_gender_from_neighboring_segments(neighboring_segments: list[Segment]) -> (GenderExtractorReturnType
+                                                                                         | None):
+        # check neighboring segments
+        found_genders = []
+        if neighboring_segments:
+            for neighbor in neighboring_segments:
+                if neighbor.nlp_data:
+                    for sentence in neighbor.nlp_data:
+                        is_found_in_past_tense = (
+                            TextGenderExtractor._infer_gender_from_second_person_sing_past_tense(sentence))
+                        if is_found_in_past_tense:
+                            found_genders.append({"gender": is_found_in_past_tense, "score": 0.85})
+
+                        is_found_noun_of_adj = TextGenderExtractor._infer_gender_from_noun_or_adj_head(sentence,
+                                                                                                       person=2)
+                        if is_found_noun_of_adj:
+                            gender, confidence = is_found_noun_of_adj
+                            found_genders.append({"gender": gender, "score": confidence})
+
+            if found_genders:
+                gender, score = TextGenderExtractor._get_gender_and_score_with_the_highest_score(found_genders)
+                return {"label": gender, "score": score}
+            else:
+                return None
+        return None
+
+    @staticmethod
+    def _infer_gender_from_second_person_sing_past_tense(sentence: TokenList) -> str | None:
         """
         Determines the gender of the addressee based on a 2nd person singular subject and a past tense verb.
 
@@ -52,7 +106,7 @@ class TextGenderExtractor:
         return None
 
     @staticmethod
-    def _first_person_sing_past_tense(sentence: TokenList) -> str | None:
+    def _infer_gender_from_first_person_sing_past_tense(sentence: TokenList) -> str | None:
         """
         Determines the gender of the speaker based on a 1st person singular subject and a past tense verb.
 
@@ -85,7 +139,7 @@ class TextGenderExtractor:
         return None
 
     @staticmethod
-    def _infer_gender_from_noun_or_adj_head(sentence: TokenList) -> tuple[str, float] | None:
+    def _infer_gender_from_noun_or_adj_head(sentence: TokenList, person: int) -> tuple[str, float] | None:
         """
         Infers gender from 1st or 2nd person subjects (both siglular and plural) linked to a Noun or Adjective head.
 
@@ -100,14 +154,25 @@ class TextGenderExtractor:
 
         Args:
             sentence (TokenList): The parsed sentence containing tokens with linguistic features.
+            person (int): Person to look for. Must be either 1 or 2 (first or second person respectively).
 
         Returns:
             tuple[str, float] | None: A tuple containing:
                 - The gender ('male' or 'female') or None if not found.
                 - A confidence score (e.g.,higher for Adjectives and lower for Nouns). Otherwise, None is returned.
         """
+        if person != 1 and person != 2:
+            return None
         for token in sentence:
             if TextGenderExtractor._is_pronoun(token) and TextGenderExtractor._is_nominal_subject(token):
+                # check person
+                if person == 2:
+                    if not TextGenderExtractor._is_second_person(token):
+                        continue
+                elif person == 1:
+                    if not TextGenderExtractor._is_first_person(token):
+                        continue
+
                 head_id = TextGenderExtractor._get_head_id(token)  # find the head
                 head_token = TextGenderExtractor._get_token_by_id_in_the_sentence(sentence, head_id)
 
@@ -342,3 +407,20 @@ class TextGenderExtractor:
             int: The ID of the head token. A value of 0 typically indicates  that the token is the root of the sentence.
                 """
         return token.get(TokenKeys.HEAD)
+
+    @staticmethod
+    def _get_gender_and_score_with_the_highest_score(list_of_dicts: list[dict]) -> tuple[str, float]:
+        """
+        Searches for the highest value of key 'score' in the dict and returns corresponding values of 'gender' and
+        'score'.
+        Args:
+            list_of_dicts:
+
+        Returns:
+            str, float: String is responsible for gender (male/female), float is responsible for its score.
+        """
+        result_dict = max(list_of_dicts, key=lambda x: x["score"])
+        gender = result_dict.get("gender")
+        score = result_dict.get("score")
+        return gender, score
+
