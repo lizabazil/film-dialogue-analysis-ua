@@ -22,3 +22,54 @@ class Segment:
         self.gender = gender   # 'female', 'male' or 'unknown'
         self.nlp_data: Optional[list[TokenList]] = None
 
+    @property
+    def total_ms_start(self) -> int:
+        """
+        Calculates the time of segment's start in  milliseconds.
+        Returns:
+            int: Time of start in milliseconds.
+        """
+        return (self.start_h * 3600000 +
+                self.start_m * 60000 +
+                self.start_s * 1000 +
+                self.start_ms)
+
+    @property
+    def total_ms_end(self) -> int:
+        """
+        Calculates the time of segment's end in  milliseconds.
+        Returns:
+            int: Time of end in milliseconds.
+        """
+        return (self.end_h * 3600000 +
+                self.end_m * 60000 +
+                self.end_s * 1000 +
+                self.end_ms)
+
+    def add_nlp_data(self, new_data: list[TokenList] | None) -> None:
+        """
+        Appends a list of UDPipe TokenList objects to the existing NLP data.
+        If the internal storage is currently uninitialized (None), a new list is created.
+        If `new_data` is provided, it extends the internal list. If `new_data` is None, no changes are made to the
+        object.
+
+        Args:
+            new_data (list[TokenList] | None): A list of processed token lists from UDPipe.
+                If None is passed, the method simply returns without action.
+        Returns:
+            None
+        """
+        if not new_data:
+            return None
+        if self.nlp_data is None:
+            self.nlp_data = []
+
+        self.nlp_data.extend(new_data)
+        return None
+
+    def __repr__(self):
+        return (f"SPEAKER_ID: {self.speaker_id}\n"
+                f"START: {self.start_h}:{self.start_m}:{self.start_s}.{self.start_ms}\n"
+                f"END: {self.end_h}:{self.end_m}:{self.end_s}.{self.end_ms}\n"
+                f"SPEECH: {self.speech}\n"
+                f"NLP_DATA: {self.nlp_data}\n")
