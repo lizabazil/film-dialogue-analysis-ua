@@ -5,23 +5,26 @@ from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 
 
 class TextGenderExtractor:
-    CONFIDENCE_DICT = {"adj": 0.7, "noun": 0.3}
+    CONFIDENCE_DICT_FINAL = {"self_verb": 1.0, "neighbor_verb": 0.85, "self_adj": 0.8, "neighbor_adj": 0.75,
+                             "self_noun": 0.6, "neighbor_noun": 0.5}
 
     def __init__(self):
         pass
 
     def predict_gender(self, target_segment: Segment, neighboring_segments: list[Segment]) -> (GenderExtractorReturnType
                                                                                                | None):
-        if target_segment.nlp_data:  # if we have udpipe parsed data
-            for sentence in target_segment.nlp_data:
-                # for testing
-                print(f"detected by the _second_person_sing_past_time: "
-                      f"{TextGenderExtractor._infer_gender_from_second_person_sing_past_tense(sentence)}")
-
         from_neighbor = self._infer_gender_from_neighboring_segments(neighboring_segments)
         from_target = self._infer_gender_from_target_segment(target_segment)
-        # TODO: add further logic
-        # Self + Verb > Neighbor + Verb > Self + Adj > Neighbor + Adj > Self + Noun
+
+        joined_list_of_dicts = []
+        if from_target:
+            joined_list_of_dicts.append(from_target)
+        if from_neighbor:
+            joined_list_of_dicts.append(from_neighbor)
+
+        if joined_list_of_dicts:
+            gender, score = self._get_gender_and_score_with_the_highest_score(joined_list_of_dicts)
+            return {"label": gender, "score": score}
         return None
 
     @staticmethod
@@ -32,11 +35,12 @@ class TextGenderExtractor:
                 is_found_in_past_tense = TextGenderExtractor._infer_gender_from_first_person_sing_past_tense(sentence)
                 is_found_noun_or_adj = TextGenderExtractor._infer_gender_from_noun_or_adj_head(sentence, person=1)
                 if is_found_in_past_tense:
-                    found_genders_list.append({"gender": is_found_in_past_tense, "score": 1.0})
+                    found_genders_list.append({"label": is_found_in_past_tense,
+                                               "score": TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("self_verb")})
 
                 if is_found_noun_or_adj:
                     gender, confidence = is_found_noun_or_adj
-                    found_genders_list.append({"gender": gender, "score": confidence})
+                    found_genders_list.append({"label": gender, "score": confidence})
 
             if found_genders_list:
                 gender, score = TextGenderExtractor._get_gender_and_score_with_the_highest_score(found_genders_list)
@@ -57,13 +61,14 @@ class TextGenderExtractor:
                         is_found_in_past_tense = (
                             TextGenderExtractor._infer_gender_from_second_person_sing_past_tense(sentence))
                         if is_found_in_past_tense:
-                            found_genders.append({"gender": is_found_in_past_tense, "score": 0.85})
+                            found_genders.append({"label": is_found_in_past_tense,
+                                                  "score": TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("neighbor_verb")})
 
                         is_found_noun_of_adj = TextGenderExtractor._infer_gender_from_noun_or_adj_head(sentence,
                                                                                                        person=2)
                         if is_found_noun_of_adj:
                             gender, confidence = is_found_noun_of_adj
-                            found_genders.append({"gender": gender, "score": confidence})
+                            found_genders.append({"label": gender, "score": confidence})
 
             if found_genders:
                 gender, score = TextGenderExtractor._get_gender_and_score_with_the_highest_score(found_genders)
@@ -131,7 +136,7 @@ class TextGenderExtractor:
                     continue
 
                 # check for verb in past tense
-                if TextGenderExtractor._is_verb(head_token) and TextGenderExtractor._is_past_tense(token):
+                if TextGenderExtractor._is_verb(head_token) and TextGenderExtractor._is_past_tense(head_token):
                     if TextGenderExtractor._is_female(head_token):
                         return "female"
                     if TextGenderExtractor._is_male(head_token):
@@ -186,9 +191,16 @@ class TextGenderExtractor:
                     result_gender = "female"
                 elif is_head_male:
                     result_gender = "male"
-                # set confidence score looking whether it was adjective or noun
-                confidence_score = ((is_head_noun and TextGenderExtractor.CONFIDENCE_DICT.get("noun")) or
-                                    (is_head_adjective and TextGenderExtractor.CONFIDENCE_DICT.get("adj")) or None)
+                # set confidence score looking whether it was adjective or noun and depending on the person
+                # (first or second)
+                confidence_score = ((is_head_noun and person == 1 and
+                                     TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("self_noun")) or
+                                    (is_head_adjective and person == 1 and
+                                     TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("self_adj")) or
+                                    (is_head_noun and person == 2 and
+                                     TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("neighbor_noun")) or
+                                    (is_head_adjective and person == 2 and
+                                     TextGenderExtractor.CONFIDENCE_DICT_FINAL.get("neighbor_adj")) or None)
 
                 if result_gender and confidence_score:
                     return result_gender, confidence_score
@@ -411,7 +423,7 @@ class TextGenderExtractor:
     @staticmethod
     def _get_gender_and_score_with_the_highest_score(list_of_dicts: list[dict]) -> tuple[str, float]:
         """
-        Searches for the highest value of key 'score' in the dict and returns corresponding values of 'gender' and
+        Searches for the highest value of key 'score' in the dict and returns corresponding values of 'label' and
         'score'.
         Args:
             list_of_dicts:
@@ -420,7 +432,7 @@ class TextGenderExtractor:
             str, float: String is responsible for gender (male/female), float is responsible for its score.
         """
         result_dict = max(list_of_dicts, key=lambda x: x["score"])
-        gender = result_dict.get("gender")
+        gender = result_dict.get("label")
         score = result_dict.get("score")
         return gender, score
 
