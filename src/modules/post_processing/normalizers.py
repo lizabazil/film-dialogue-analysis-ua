@@ -19,7 +19,8 @@ class SegmentNormalizer:
             return []
 
         merged_segments = []
-        end_of_sentence_chars = re.compile(r"[!.?]+$")  # will be match with !.?  only if those symbols are at the end of the string
+        # will be match with !.?  only if those symbols are at the end of the string
+        end_of_sentence_chars = re.compile(r"[!.?]+$")
 
         for s in segments:
             if not merged_segments:
@@ -48,7 +49,7 @@ class SegmentNormalizer:
 
         return merged_segments
 
-    def join_close_replicas_by_the_same_speaker(self, segments: list[Segment]) -> list[Segment]:
+    def join_close_replicas_by_the_same_speaker(self, segments: list[Segment], gap_duration_in_seconds: int = 2) -> list[Segment]:
         """
         Merges consecutive segments from the same speaker if they are separated by a short pause.
 
@@ -58,11 +59,12 @@ class SegmentNormalizer:
 
         Args:
             segments (list[Segment]): An ordered list of transcript segments to process.
+            gap_duration_in_seconds (int): A boundary value for gap duration. If the pause between two segments >=
+            this value, then those segments WILL NOT be joined, even having the same speaker.
         Returns:
             list[Segment]: An edited list of segments where close replicas have been joined (their timecodes and nlp_data
             were properly changed).
         """
-        gap_duration_in_seconds = 2  # gap must be less than 2 seconds in order to be joined
         if not segments:
             return []
 
