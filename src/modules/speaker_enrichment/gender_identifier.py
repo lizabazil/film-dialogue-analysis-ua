@@ -30,11 +30,59 @@ class GenderEnricher:
         Returns:
 
         """
+        # TODO: squezzing segments with the same speaker, no matter what the gap between them, in order to send one segments to different gender extractors
         audio_result = self.audio_gender_extractor.predict_gender(video_path, ...)
         visual_result = self.visual_gender_extractor.predict_gender(video_path, ...)
         text_result = self.text_gender_extractor.predict_gender(..., ...)
         # TODO: implement
         pass
+
+    def _collect_segments_of_same_speaker(self, all_segments: list[Segment], target_segment_index: int) -> list[Segment]:
+        """
+        Collects the segments, which have the same speaker Id, as given target segment.
+
+        IMPORTANT: this method includes the target segment in the returned list of segments.
+        Args:
+            all_segments: Full list of segments.
+            target_segment_index: The index of the target segment.
+
+        Returns:
+            list[Segment]: List of neighboring segments, whose speaker Ids equal to the target segment's speaker Id.
+        """
+        if target_segment_index < 0 or target_segment_index >= len(all_segments):
+            return []
+        result_segments = [all_segments[target_segment_index]]
+
+        target_segment_speaker_id = all_segments[target_segment_index].speaker_id
+        total_segments = len(all_segments)
+
+        local_index = target_segment_index - 1
+        if local_index >= 0:
+            # to the left
+            curr_segment = all_segments[local_index]
+            while curr_segment.speaker_id == target_segment_speaker_id:
+                result_segments.append(curr_segment)
+                local_index -= 1
+                if local_index < 0:
+                    break
+                curr_segment = all_segments[local_index]
+
+        # to the right
+        local_index = target_segment_index + 1
+        if local_index < total_segments:
+            curr_segment = all_segments[local_index]
+            while curr_segment.speaker_id == target_segment_speaker_id:
+                result_segments.append(curr_segment)
+                local_index += 1
+                if local_index >= total_segments:
+                    break
+                curr_segment = all_segments[local_index]
+
+        return result_segments
+
+    def _sort_segments_by_time_start(self, segments: list[Segment]) -> list[Segment]:
+        res = sorted(segments, key=lambda x: x.total_ms_start)
+        return res
 
     def _get_neighboring_segments(self, all_segments: list[Segment], target_segment_index: int) -> list[Segment]:
         """
