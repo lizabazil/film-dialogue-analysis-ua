@@ -1,8 +1,9 @@
 # this file will be using all methods for identifying the gender of the speaker
-from audio_gender_extractor import AudioGenderExtractor
-from visual_gender_extractor import VisualGenderExtractor
-from text_gender_extractor import TextGenderExtractor
+from src.modules.speaker_enrichment.audio_gender_extractor import AudioGenderExtractor
+from src.modules.speaker_enrichment.visual_gender_extractor import VisualGenderExtractor
+from src.modules.speaker_enrichment.text_gender_extractor import TextGenderExtractor
 from src.utils.segment import Segment
+from src.modules.post_processing.normalizers import SegmentNormalizer
 
 
 class GenderEnricher:
@@ -10,7 +11,7 @@ class GenderEnricher:
     Main class which uses different approaches to detect the gender of the speaker.
     """
     # TODO: implement
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict):
         self.weights = {
             "audio": config.get("speaker_enrichment", {}).get("voting_weights", {}).get("audio", {}),
             "image": config.get("speaker_enrichment", {}).get("voting_weights", {}).get("image", {}),
@@ -30,14 +31,43 @@ class GenderEnricher:
         Returns:
 
         """
-        # TODO: squezzing segments with the same speaker, no matter what the gap between them, in order to send one segments to different gender extractors
-        audio_result = self.audio_gender_extractor.predict_gender(video_path, ...)
-        visual_result = self.visual_gender_extractor.predict_gender(video_path, ...)
-        text_result = self.text_gender_extractor.predict_gender(..., ...)
-        # TODO: implement
-        pass
+        next_index_to_process = 0
+        total_segments = len(all_segments)
 
-    def _collect_segments_of_same_speaker(self, all_segments: list[Segment], target_segment_index: int) -> list[Segment]:
+        while next_index_to_process < total_segments:
+            neighbors = self._get_neighboring_segments(all_segments, target_segment_index=next_index_to_process)
+            same_speaker_segments, next_index_to_process = self._collect_segments_of_same_speaker(all_segments,
+                                                                                          target_segment_index=
+                                                                                          next_index_to_process)
+
+            next_index_to_process += 1
+
+            # sort, so the segments are in a proper order (sort by the start time)
+            same_speaker_segments = self._sort_segments_by_time_start(same_speaker_segments)
+            neighbors = self._sort_segments_by_time_start(neighbors)
+            same_speaker_segments_into_one = SegmentNormalizer().join_close_replicas_by_the_same_speaker(
+                segments=same_speaker_segments, gap_duration_in_seconds=float('inf'))
+            if len(same_speaker_segments_into_one) != 1:
+                raise ValueError(f"Size of segments by the same speaker list MUST 1, but it's current value is "
+                                 f"{len(same_speaker_segments_into_one)}")
+
+            the_whole_segment_to_analyze = same_speaker_segments_into_one[0]
+
+            audio_result = self.audio_gender_extractor.predict_gender(video_path,
+                                                                      segment=the_whole_segment_to_analyze)
+            visual_result = self.visual_gender_extractor.predict_gender(video_path, segment=the_whole_segment_to_analyze)
+            text_result = self.text_gender_extractor.predict_gender(target_segment=the_whole_segment_to_analyze,
+                                                                    neighboring_segments=neighbors)
+
+            # for now, for debugging
+            with open("/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/temporary_files/test.txt", "a") as f:
+                f.write(f"\n------------------------------------------------------------\n"
+                        f"Segment: {the_whole_segment_to_analyze}\naudio_result: {audio_result}\nvisual result{visual_result}"
+                        f"\ntext result: {text_result}")
+        return None
+
+    def _collect_segments_of_same_speaker(self, all_segments: list[Segment], target_segment_index: int) -> (
+            tuple)[list[Segment], int]:
         """
         Collects the segments, which have the same speaker Id, as given target segment.
 
@@ -49,8 +79,10 @@ class GenderEnricher:
         Returns:
             list[Segment]: List of neighboring segments, whose speaker Ids equal to the target segment's speaker Id.
         """
+        max_index_of_the_target_speaker = target_segment_index
+
         if target_segment_index < 0 or target_segment_index >= len(all_segments):
-            return []
+            return [], target_segment_index
         result_segments = [all_segments[target_segment_index]]
 
         target_segment_speaker_id = all_segments[target_segment_index].speaker_id
@@ -73,14 +105,29 @@ class GenderEnricher:
             curr_segment = all_segments[local_index]
             while curr_segment.speaker_id == target_segment_speaker_id:
                 result_segments.append(curr_segment)
+                max_index_of_the_target_speaker = local_index
+
                 local_index += 1
                 if local_index >= total_segments:
                     break
                 curr_segment = all_segments[local_index]
+                #max_index_of_the_target_speaker = local_index
 
-        return result_segments
+        return result_segments, max_index_of_the_target_speaker
 
     def _sort_segments_by_time_start(self, segments: list[Segment]) -> list[Segment]:
+        """
+        Sorts a list of segments chronologically based on their absolute start time.
+        This operation is **not in-place**. It creates and returns a new list using the built-in `sorted()` function,
+        leaving the original `segments` list unmodified.
+
+        Args:
+            segments (list[Segment]): The list of Segment objects to be sorted.
+
+        Returns:
+            list[Segment]: A new list containing the segments sorted in ascending order by their `total_ms_start`
+            attribute.
+                """
         res = sorted(segments, key=lambda x: x.total_ms_start)
         return res
 
