@@ -1,5 +1,5 @@
 # will be using image-to-text model to identify person on the image
-from basic_gender_extractor import BasicGenderExtractor
+from src.modules.speaker_enrichment.basic_gender_extractor import BasicGenderExtractor
 import torch
 from transformers import (AutoModel, AutoProcessor, AutoModelForZeroShotObjectDetection)
 from PIL import Image
@@ -13,10 +13,10 @@ from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 
 
 class VisualGenderExtractor(BasicGenderExtractor):
-    # paths mostly for debugging
-    save_screenshot_path = "../../../data/screenshots/screen_temp.jpg"
-    save_cropped_image_path = "../../../data/screenshots/screen_crop.jpg"
-    save_screenshot_with_points = "../../../data/screenshots/screen_with_points.jpg"
+    # paths mostly for debugging  # TODO: improve/change paths
+    save_screenshot_path = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_temp.jpg" #"../../../data/screenshots/screen_temp.jpg"
+    save_cropped_image_path = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_crop.jpg" #"../../../data/screenshots/screen_crop.jpg"
+    save_screenshot_with_points = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_with_points.jpg" #"../../../data/screenshots/screen_with_points.jpg"
 
     def __init__(self, config: dict):
         super().__init__()
@@ -97,7 +97,7 @@ class VisualGenderExtractor(BasicGenderExtractor):
             #ImageUtils.draw_bounding_box_on_the_image(box, Image.fromarray(image))
             ImageUtils.draw_bounding_box_on_the_image_in_place(box, pil_image)
         # save final image with all the boxes
-        pil_image.save(self.save_screenshot_with_points)  # for debugging
+        #pil_image.save(self.save_screenshot_with_points)  # for debugging
 
         return result["boxes"], result["scores"], result["text_labels"]
 

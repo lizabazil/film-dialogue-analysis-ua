@@ -1,6 +1,6 @@
 import torch
 import torchaudio
-from basic_gender_extractor import BasicGenderExtractor
+from src.modules.speaker_enrichment.basic_gender_extractor import BasicGenderExtractor
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
 from src.utils.audio_file_utils import AudioFileUtils
