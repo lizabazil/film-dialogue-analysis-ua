@@ -49,7 +49,7 @@ class SegmentNormalizer:
 
         return merged_segments
 
-    def join_close_replicas_by_the_same_speaker(self, segments: list[Segment], gap_duration_in_seconds: int = 2) -> list[Segment]:
+    def join_close_replicas_by_the_same_speaker(self, segments: list[Segment], gap_duration_in_seconds: float = 2) -> list[Segment]:
         """
         Merges consecutive segments from the same speaker if they are separated by a short pause.
 
@@ -59,7 +59,7 @@ class SegmentNormalizer:
 
         Args:
             segments (list[Segment]): An ordered list of transcript segments to process.
-            gap_duration_in_seconds (int): A boundary value for gap duration. If the pause between two segments >=
+            gap_duration_in_seconds (float): A boundary value for gap duration. If the pause between two segments >=
             this value, then those segments WILL NOT be joined, even having the same speaker.
         Returns:
             list[Segment]: An edited list of segments where close replicas have been joined (their timecodes and nlp_data
