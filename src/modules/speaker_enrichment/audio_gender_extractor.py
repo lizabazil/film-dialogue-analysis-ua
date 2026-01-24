@@ -22,26 +22,21 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.model = AutoModelForAudioClassification.from_pretrained(self.model_name).to(self.device)
         self.sampling_rate = 16000  # the model needs this specific sampling rate
         self.full_audio_path = "../../../data/temporary_files/full_audio_for_gender_extractor.mp3"
-        self.temp_cut_audio_path = "../../../data/temporary_files/cut_audio_for_gender_extractor.mp3"
-
         self.custom_id_to_label = {"female": "woman", "male": "man"}
+        self.last_given_video_path = ""
 
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
         This method is designed for many segments belonging to one speaker.
         """
-        # create audio file from video
-        AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
+        # create audio file from video, if the video path is diffent from last added
+        # this is done in order to improve performance
+        if self.last_given_video_path != video_path:
+            AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
+            self.last_given_video_path = video_path
 
-        # cut audio segment from full audio
-        AudioFileUtils.cut_audio_segment(self.full_audio_path, self.temp_cut_audio_path,
-                                         segment.start_h, segment.start_m, segment.start_s,
-                                         segment.start_ms,
-                                         segment.end_h, segment.end_m, segment.end_s,
-                                         segment.end_ms)
+        speech_array = self._get_segment(segment.total_ms_start, segment.total_ms_end)
 
-        # get speech array from the cut audio file
-        speech_array = self._prepare_speech_array_from_audio_file(self.temp_cut_audio_path)
         inputs = self.feature_extractor(
             speech_array,
             sampling_rate=self.sampling_rate,
@@ -82,3 +77,28 @@ class AudioGenderExtractor(BasicGenderExtractor):
 
         speech_array = speech_array.squeeze().numpy()
         return speech_array
+
+    def _get_segment(self, start_ms: int, end_ms: int) -> np.ndarray:
+        metadata = torchaudio.info(self.full_audio_path)
+        orig_sr = metadata.sample_rate
+
+        # get frames
+        start_frame = int((start_ms / 1000) * orig_sr)
+        num_frames = int(((end_ms - start_ms) / 1000) * orig_sr)
+
+        waveform, sr = torchaudio.load(
+            self.full_audio_path,
+            frame_offset=start_frame,   # frame_offset is a jump into the file
+            num_frames=num_frames,
+            normalize=True
+        )
+
+        # convert to mono
+        if waveform.shape[0] > 1:
+            waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+        if sr != self.sampling_rate:
+            resampler = torchaudio.transforms.Resample(sr, self.sampling_rate)
+            waveform = resampler(waveform)
+
+        return waveform.squeeze().numpy()
