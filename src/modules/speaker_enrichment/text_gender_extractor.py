@@ -186,6 +186,10 @@ class TextGenderExtractor:
                 is_head_female = TextGenderExtractor._is_female(head_token)
                 is_head_male = TextGenderExtractor._is_male(head_token)
 
+                # check if this is a valid nominal predicate
+                if not TextGenderExtractor._is_valid_nominal_predicate(sentence, head_id):
+                    continue
+
                 result_gender = None
                 if is_head_female:
                     result_gender = "female"
@@ -205,6 +209,59 @@ class TextGenderExtractor:
                 if result_gender and confidence_score:
                     return result_gender, confidence_score
         return None  # no gender was found
+
+    @staticmethod
+    def _is_valid_nominal_predicate(sentence: TokenList, token_id: int) -> bool:
+        """
+        NOTE: nominal predicate = іменник присудок
+        Determines if a noun is a valid predicate suitable for gender extraction.
+        Logic: Must be Nominative or Instrumental case AND no connected preposition.
+
+        Checks two conditions:
+        1. The noun must be in the Nominative ('Nom') or Instrumental ('Ins') case.
+            - Nominative: "Я **квітка**" (I am a flower).
+            - Instrumental: "Я є **дівчиною**" (I am a girl).
+        2. The noun must NOT be part of a prepositional phrase (i.e., it must not have any child dependency with
+        relation 'case').
+            - Rejects: "Я **з квіткою**" (Instrumental + preposition 'з').
+
+        Args:
+            sentence (TokenList): The list of tokens representing the sentence.
+            token_id (int): The ID of the token to check (note: UDPipe IDs usually start at 1).
+
+        Returns:
+            bool: True if the token is a direct noun predicate without prepositions, False otherwise.
+        """
+        target_token = TextGenderExtractor._get_token_by_id_in_the_sentence(sentence, token_id)
+        is_in_nominative = TextGenderExtractor._is_in_nominative_case(target_token)
+        is_in_instrumental = TextGenderExtractor._is_in_instrumental_case(target_token)
+
+        if not (is_in_nominative or is_in_instrumental):
+            return False
+
+        # check for nominative/instrumental case AND without preposition (deprel != case)
+        has_connected_preposition = TextGenderExtractor._has_prepositional_child(sentence, token_id)
+        return not has_connected_preposition
+
+    @staticmethod
+    def _has_prepositional_child(sentence: TokenList, token_id: int) -> bool:
+        """
+        Checks if the token (identified by token_id) has any dependent child that acts as a preposition (deprel='case').
+
+        Example: In "Я з квіткою.", 'квіткою' is the head, and 'з' is the child with deprel='case'.
+
+        Args:
+            sentence (TokenList): The list of all tokens in the sentence.
+            token_id (int): The ID of the noun token we are checking.
+
+        Returns:
+            bool: True if a preposition is attached to this token, False otherwise.
+        """
+        for token in sentence:
+            head_id_for_current_token = TextGenderExtractor._get_head_id(token)
+            if head_id_for_current_token == token_id and TextGenderExtractor._is_deprel_case(token):
+                return True
+        return False
 
     @staticmethod
     def _get_token_by_id_in_the_sentence(sentence: TokenList, token_id: int) -> Token | None:
@@ -390,6 +447,20 @@ class TextGenderExtractor:
         return token.get(TokenKeys.DEPREL, "") == Deprel.NSUBJ
 
     @staticmethod
+    def _is_deprel_case(token: Token) -> bool:
+        """
+        Checks if the token plays the role of a preposition in the sentence.
+        This method inspects the dependency relation ('deprel') of the token to see if it equals 'case'.
+
+        Args:
+            token (Token): Given token with linguistic features (parsed by conllu).
+        Returns:
+            bool: True if the token is a preposition ('case'), False otherwise.
+        """
+
+        return token.get(TokenKeys.DEPREL, "") == Deprel.CASE
+
+    @staticmethod
     def _is_number_sing(token: Token) -> bool:
         """
         Checks if the token has the singular grammatical number feature.
@@ -419,6 +490,38 @@ class TextGenderExtractor:
             int: The ID of the head token. A value of 0 typically indicates  that the token is the root of the sentence.
                 """
         return token.get(TokenKeys.HEAD)
+
+    @staticmethod
+    def _is_in_nominative_case(token: Token) -> bool:
+        """
+        Checks if the provided token is in the Nominative case (Case=Nom).
+
+        In the context of gender extraction, words in the Nominative case are strong candidates for identifying the
+        speaker's gender (e.g., "Я **квітка**"), whereas other cases might indicate location or object
+        (e.g., Locative "Я на **вулиці**").
+
+        Args:
+            token (Token): Given token with linguistic features (parsed by conllu).
+
+        Returns:
+            bool: True if the token has the feature 'Case=Nom', False otherwise.
+        """
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.CASE, "") == FeatValues.NOM
+
+    @staticmethod
+    def _is_in_instrumental_case(token: Token) -> bool:
+        """
+        Checks if the provided token is in the Instrumental case (Case=Ins).
+        Args:
+            token (Token): Given token with linguistic features (parsed by conllu).
+
+        Returns:
+            bool: True if the token has the feature 'Case=Ins', False otherwise.
+        """
+
+        feats = token.get(TokenKeys.FEATS)
+        return feats and feats.get(FeatKeys.CASE, "") == FeatValues.INS
 
     @staticmethod
     def _get_gender_and_score_with_the_highest_score(list_of_dicts: list[dict]) -> tuple[str, float]:
