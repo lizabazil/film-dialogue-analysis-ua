@@ -18,6 +18,7 @@ class FeatKeys:
     PERSON = "Person"
     GENDER = "Gender"
     NUMBER = "Number"
+    CASE = "Case"
 
 
 class FeatValues:
@@ -36,5 +37,13 @@ class FeatValues:
     # number
     SING = "Sing"
 
+    # cases
+    LOC = "Loc"  # locative case
+    NOM = "Nom"  # nominative case
+    INS = "Ins"  # instrumental case  (орудний)
+    GEN = "Gen"  # genitive case (родовий)
+
+
 class Deprel:
     NSUBJ = "nsubj"
+    CASE = "case"
