@@ -89,7 +89,27 @@ class LLMTranscriptParser:
         return None
 
     def _remove_excessive_overlap_speech(self, raw_chunks: list[str]) -> list[str]:
+        """
+        Processes raw transcript chunks to create a continuous, non-overlapping timeline.
+
+        This method performs several key tasks:
+        1. Parses raw text from overlapping processing windows.
+        2. Converts relative timestamps (from each chunk) into absolute global timecodes.
+        3. Filters out segments that fall outside the valid processing window (overlap handling) to ensure the best
+        transcript quality.
+        4. Resolves temporal conflicts: If a segment ends after the next segment begins, the end time of the
+        preceding segment is truncated to match the start time of the current segment.
+
+        Args:
+            raw_chunks (list[str]): A list of raw text strings returned by the model, where each item corresponds
+            to a processed audio chunk.
+
+        Returns:
+            list[str]: A list of fully formatted strings (e.g., "SpeakerID | [Start --> End] | Text") with corrected
+            timestamps and unique speaker IDs.
+        """
         final_lines = []
+        last_segment = None
 
         for i, chunk_text in enumerate(raw_chunks):
             lines = chunk_text.strip().split("\n")
@@ -103,7 +123,6 @@ class LLMTranscriptParser:
                     continue
 
                 start_str, end_str = match.groups()
-
                 thirty_sec_in_ms = TimeUtils.convert_to_ms(0, 0, 30, 0)
 
                 real_timecode_start_ms = TimeUtils.convert_to_ms(*self._parse_timecode(start_str))
@@ -115,15 +134,6 @@ class LLMTranscriptParser:
                 if (real_timecode_start >= cutoff_ms + thirty_sec_in_ms) or (real_timecode_start_ms < thirty_sec_in_ms):
                     continue
 
-                start_time_tuple = TimeUtils.convert_ms_to_normal(real_timecode_start)
-                end_time_tuple = TimeUtils.convert_ms_to_normal(real_timecode_end)
-
-                start_time_formatted = TimeUtils.format_time_str(*start_time_tuple)
-                end_time_formatted = TimeUtils.format_time_str(*end_time_tuple)
-
-                new_timecodes = (f"[{start_time_formatted} --> "
-                                 f"{end_time_formatted}]")
-
                 speaker = self._get_speaker(line)
                 speaker = self._generate_unique_speaker_id(speaker, i)  # get new speaker id
                 speech = self._get_speech(line)
@@ -134,10 +144,56 @@ class LLMTranscriptParser:
                 if not speaker:
                     continue
 
-                final_line_in_ts = f"{speaker} | {new_timecodes} | {speech}"
-                final_lines.append(final_line_in_ts)
+                current_segment = {
+                    "start": real_timecode_start,
+                    "end": real_timecode_end,
+                    "speaker": speaker,
+                    "speech": speech
+                }
+
+                if last_segment is not None:
+                    if last_segment["end"] > current_segment["start"]:
+                        last_segment["end"] = current_segment["start"]
+
+                    self._format_and_append_segment(final_lines, last_segment)
+
+                last_segment = current_segment
+
+        if last_segment is not None:
+            self._format_and_append_segment(final_lines, last_segment)
 
         return final_lines
+
+    def _format_and_append_segment(self, final_lines_list, segment_data) -> None:
+        """
+        Formats the segment data into the final string representation and appends it to the list.
+        This method is responsible for the conversion of timestamps (from total ms to string format), which allows
+        modifying the 'end' time dynamically before finalizing the line (in case of obvious hallucinations).
+
+        The resulting format is: "Speaker_ID | [HH:MM:SS.mmm --> HH:MM:SS.mmm] | Speech text"
+
+        Args:
+            final_lines_list (list): The list of strings where the formatted line will be stored.
+            segment_data (dict): A dictionary containing the segment details with keys:
+                                     - 'start' (int): Start time in milliseconds.
+                                     - 'end' (int): End time in milliseconds.
+                                     - 'speaker' (str): The speaker ID.
+                                     - 'speech' (str): The recognized text.
+        Returns:
+            None
+        """
+        start_time_tuple = TimeUtils.convert_ms_to_normal(segment_data.get('start'))
+        end_time_tuple = TimeUtils.convert_ms_to_normal(segment_data.get('end'))
+
+        start_time_formatted = TimeUtils.format_time_str(*start_time_tuple)
+        end_time_formatted = TimeUtils.format_time_str(*end_time_tuple)
+
+        new_timecodes = (f"[{start_time_formatted} --> "
+                         f"{end_time_formatted}]")
+
+        final_line_in_ts = f"{segment_data['speaker']} | {new_timecodes} | {segment_data['speech']}"
+        final_lines_list.append(final_line_in_ts)
+        return None
 
     def _get_speaker(self, line: str) -> str:
         """

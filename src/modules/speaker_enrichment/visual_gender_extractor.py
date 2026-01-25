@@ -95,7 +95,7 @@ class VisualGenderExtractor(BasicGenderExtractor):
             print(f"Detected {labels} with confidence {round(score.item(), 3)} at location {box}")
             # draw bounding box for debugging
             #ImageUtils.draw_bounding_box_on_the_image(box, Image.fromarray(image))
-            ImageUtils.draw_bounding_box_on_the_image_in_place(box, pil_image)
+            #ImageUtils.draw_bounding_box_on_the_image_in_place(box, pil_image)
         # save final image with all the boxes
         #pil_image.save(self.save_screenshot_with_points)  # for debugging
 
