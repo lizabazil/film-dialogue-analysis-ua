@@ -7,6 +7,7 @@ from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 class TextGenderExtractor:
     CONFIDENCE_DICT_FINAL = {"self_verb": 1.0, "neighbor_verb": 0.85, "self_adj": 0.8, "neighbor_adj": 0.75,
                              "self_noun": 0.6, "neighbor_noun": 0.5}
+    GENDER_DICT = {"female": "woman", "male": "man"}
 
     def __init__(self):
         pass
@@ -24,7 +25,7 @@ class TextGenderExtractor:
 
         if joined_list_of_dicts:
             gender, score = self._get_gender_and_score_with_the_highest_score(joined_list_of_dicts)
-            return {"label": gender, "score": score}
+            return {"label": self.GENDER_DICT.get(gender, gender), "score": score}
         return None
 
     @staticmethod
