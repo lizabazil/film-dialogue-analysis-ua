@@ -23,9 +23,9 @@ class NLPUDPipeParser:
         and integrates the results back into the domain objects.
 
         The process consists of four main steps:
-        1. Preparation: Aggregates speech text from all segments into another text file to ensure UDPipe has
+        1. Preparation: Aggregates speech text from all segments into another variable to ensure UDPipe has
         full context for analysis.
-        2. Processing: Sends the created file to the external UDPipe service via `UDPipeHandler`.
+        2. Processing: Sends the gathered data to the external UDPipe service via `UDPipeHandler`.
         3. Conversion: Transforms the raw JSON output into structured `conllu.TokenList`
            objects using `UdpipeJsonToConlluConverter`.
         4. Alignment: Maps the linear list of parsed sentences back to the specific time-coded segments using
