@@ -4,22 +4,19 @@ from src.modules.speaker_enrichment.visual_gender_extractor import VisualGenderE
 from src.modules.speaker_enrichment.text_gender_extractor import TextGenderExtractor
 from src.utils.segment import Segment
 from src.modules.post_processing.normalizers import SegmentNormalizer
+from collections import Counter
 
 
 class GenderEnricher:
     """
     Main class which uses different approaches to detect the gender of the speaker.
     """
-    # TODO: implement
     def __init__(self, config: dict):
-        self.weights = {
-            "audio": config.get("speaker_enrichment", {}).get("voting_weights", {}).get("audio", {}),
-            "image": config.get("speaker_enrichment", {}).get("voting_weights", {}).get("image", {}),
-            "text": config.get("speaker_enrichment", {}).get("voting_weights", {}).get("text", {})
-        }
         self.audio_gender_extractor = AudioGenderExtractor(config)
         self.visual_gender_extractor = VisualGenderExtractor(config)
         self.text_gender_extractor = TextGenderExtractor()
+
+        self.segment_normalizer = SegmentNormalizer()
 
     def annotate_segments(self, video_path: str, all_segments: list[Segment]):
         """
@@ -45,7 +42,7 @@ class GenderEnricher:
             # sort, so the segments are in a proper order (sort by the start time)
             same_speaker_segments = self._sort_segments_by_time_start(same_speaker_segments)
             neighbors = self._sort_segments_by_time_start(neighbors)
-            same_speaker_segments_into_one = SegmentNormalizer().join_close_replicas_by_the_same_speaker(
+            same_speaker_segments_into_one = self.segment_normalizer.merge_close_segments(
                 segments=same_speaker_segments, gap_duration_in_seconds=float('inf'))
             if len(same_speaker_segments_into_one) != 1:
                 raise ValueError(f"Size of segments by the same speaker list MUST 1, but it's current value is "
@@ -59,12 +56,62 @@ class GenderEnricher:
             text_result = self.text_gender_extractor.predict_gender(target_segment=the_whole_segment_to_analyze,
                                                                     neighboring_segments=neighbors)
 
+            final_gender_decision = self._resolve_gender_conflict(audio_result.get("label", None),
+                                                                  visual_result.get("label", None),
+                                                                  text_result.get("label", None))
+
             # for now, for debugging
             with open("/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/temporary_files/test.txt", "a") as f:
                 f.write(f"\n------------------------------------------------------------\n"
                         f"Segment: {the_whole_segment_to_analyze}\naudio_result: {audio_result}\nvisual result{visual_result}"
                         f"\ntext result: {text_result}")
         return None
+
+    def _resolve_gender_conflict(self,
+                                 audio: str | None,
+                                 visual: str | None,
+                                 text: str | None) -> str | None:
+        """
+        Makes decision between conflicting gender predictions from audio, visual, and textual sources.
+
+        The resolution logic follows a hierarchy based on data availability:
+        1. **Three sources available**: Uses majority voting (2 vs 1) or consensus.
+        2. **Two sources available**:
+            - If they agree: Returns the common prediction.
+            - If they disagree: Follows the priority **Text > Audio > Visual**.
+        3. **One source available**: Returns the single available prediction.
+
+        Args:
+            audio (str | None): Gender predicted from audio analysis (e.g., 'man', 'woman').
+            visual (str | None): Gender predicted from visual analysis.
+            text (str | None): Gender inferred from text/linguistic analysis.
+
+        Returns:
+            str | None: The resolved gender label, or None if no predictions are provided.
+        """
+        results = [res for res in [audio, visual, text] if res is not None]
+        if not results:
+            return None
+
+        if len(results) == 3:  # available all the results
+            most_common, count = Counter(results).most_common(1)[0]
+            return most_common
+
+        # if there is only audio and visual -> priority goes to the audio
+        if audio is not None and visual is not None and text is None:
+            return audio
+
+        if len(results) == 2:  # available only two results
+            if results[0] == results[1]:  # results are the same
+                return results[0]
+
+            # if there are 2 results, priority goes like this: text > audio > visual
+            if text:
+                return text
+            return audio
+
+        # in another case, return the only possible option
+        return results[0]
 
     def _collect_segments_of_same_speaker(self, all_segments: list[Segment], target_segment_index: int) -> (
             tuple)[list[Segment], int]:
