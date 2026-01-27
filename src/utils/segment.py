@@ -7,8 +7,17 @@ class Segment:
     Class to represent segment. It contains such information as speaker_id, start and end timecode for speech,
     speech.
     """
-    def __init__(self, speaker_id: str, start_h: int, start_m: int, start_s: int, start_ms: int,
-                 end_h: int, end_m: int, end_s: int, end_ms: int, speech: str, gender: str = "unknown"):
+    def __init__(self, speaker_id: str = "unknown",
+                 start_h: int = 0,
+                 start_m: int = 0,
+                 start_s: int = 0,
+                 start_ms: int = 0,
+                 end_h: int = 0,
+                 end_m: int = 0,
+                 end_s: int = 0,
+                 end_ms: int = 0,
+                 speech: str = "",
+                 gender: str = "unknown"):
         self.speaker_id = speaker_id
         self.start_h = start_h  # hour
         self.start_m = start_m  # minute
@@ -65,6 +74,20 @@ class Segment:
             self.nlp_data = []
 
         self.nlp_data.extend(new_data)
+        return None
+
+    def set_start_time(self, hour: int, minute: int, second: int, millisecond: int) -> None:
+        self.start_h = hour
+        self.start_m = minute
+        self.start_s = second
+        self.start_ms = millisecond
+        return None
+
+    def set_end_time(self, hour: int, minute: int, second: int, millisecond: int) -> None:
+        self.end_h = hour
+        self.end_m = minute
+        self.end_s = second
+        self.end_ms = millisecond
         return None
 
     def __repr__(self):
