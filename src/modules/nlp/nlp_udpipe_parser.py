@@ -15,7 +15,7 @@ class NLPUDPipeParser:
         self.udpipe_json_to_conllu_converter = UdpipeJsonToConlluConverter()
         self.aligner = NlpAligner()
 
-    def enrich_segments(self, segments: list[Segment], cached_json_path: str) -> list[Segment]:
+    def add_linguistic_features(self, segments: list[Segment], cached_json_path: str) -> list[Segment]:
         """
         Orchestrates the NLP enrichment pipeline for the provided speech segments.
 

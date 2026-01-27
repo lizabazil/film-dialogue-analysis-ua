@@ -5,7 +5,24 @@ import re
 
 class SegmentNormalizer:
 
-    def join_split_replicas(self, segments: list[Segment]) -> list[Segment]:
+    def normalize(self, segments: list[Segment]) -> list[Segment]:
+        """
+        Calls two methods to:
+        1. Merge two replicas if the second replica is a continuation of the first.
+        2. Merge close replicas if they have the same speaker and the gap between them is less than the specified gap.
+        Args:
+            segments: Input segments to be normalized.
+
+        Returns:
+            list[Segment]: Normalized replicas.
+        """
+        if not segments:
+            return []
+        segments = self.merge_broken_sentences(segments)
+        segments = self.merge_close_segments(segments)
+        return segments
+
+    def merge_broken_sentences(self, segments: list[Segment]) -> list[Segment]:
         """
         Works in case if one replica is split into two segments (when there is no end of sentence in first
         replica, and this sentence continues in another replica (and the speaker is the same)).
@@ -49,7 +66,7 @@ class SegmentNormalizer:
 
         return merged_segments
 
-    def join_close_replicas_by_the_same_speaker(self, segments: list[Segment], gap_duration_in_seconds: float = 2) -> list[Segment]:
+    def merge_close_segments(self, segments: list[Segment], gap_duration_in_seconds: float = 2) -> list[Segment]:
         """
         Merges consecutive segments from the same speaker if they are separated by a short pause.
 
