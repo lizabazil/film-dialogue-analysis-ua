@@ -32,6 +32,21 @@ class WhisperTranscriptCleaner:
         pass
 
     def clean(self, segments: list[Segment]) -> list[Segment]:
+        """
+        Controls the transcript cleaning pipeline by applying a sequence of filters to the input segments.
+
+        This method acts as the main entry point for post-processing (works for Whisper output). It sequentially
+        executes cleaning strategies to improve transcript quality:
+        1. Filters out non-speech hallucinations (e.g., subtitles credits, music tags).
+        2. Normalizes linguistic artifacts (e.g., stuttering, repeated phrases, elongated characters).
+
+        Args:
+            segments (list[Segment]): The list of raw transcript segments to process.
+
+        Returns:
+            list[Segment]: A processed list of segments, potentially shorter than the input  if empty segments were
+            removed during cleaning.
+        """
         if not segments:
             return []
 
