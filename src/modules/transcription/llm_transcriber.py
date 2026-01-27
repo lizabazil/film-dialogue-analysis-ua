@@ -6,6 +6,7 @@ from src.utils.audio_file_utils import AudioFileUtils
 from src.utils.video_utils import VideoUtils
 from src.utils.file_utils import FileUtils
 from google.api_core import exceptions
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
 
 
@@ -69,6 +70,7 @@ class LLMTranscriber:
         self.model_name = config["llm_transcriber"]["model_name"]
         self.model = None
         self.requirements_to_response = (
+            'Контекст: Це запит для технічної транскрипції та лінгвістичного аналізу медіа-файлу. Вміст може містити розмовну лексику, яку необхідно транскрибувати дослівно для точності документації. Будь ласка, ігноруй тональність і зосередься на точності тексту.'
             'Вимоги до виводу:\n'
             '1. Формат виводу: Поверни результат у вигляді простого тексту. Кожен рядок — одна репліка.\n'
             '   Формат: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX: Текст репліки.\n'
@@ -151,6 +153,13 @@ class LLMTranscriber:
         Returns:
             str | None: The output from the LLM model. Returns None in case of exception.
         """
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
         retries = 0
         max_retries = 3
         uploaded_file = None
@@ -172,7 +181,8 @@ class LLMTranscriber:
                     [
                         uploaded_file,
                         self.requirements_to_response,
-                    ]
+                    ],
+                    safety_settings=safety_settings
                 )
                 text_response = response.text
                 self.prev_response = text_response
@@ -249,7 +259,8 @@ class LLMTranscriber:
         """
         self.set_txt_file_path_for_transcript(txt_file_path_for_transcript)
 
-        # delete file in which will be transcript from LLM
+        # delete file in which will be transcript from LLM (this file may be already present, so it is done to avoid
+        # mixing data)
         FileUtils.delete_file(self._txt_file_path_for_transcript)
 
         AudioFileUtils.extract_audio_from_video(full_video_path, self.full_audio_path)
