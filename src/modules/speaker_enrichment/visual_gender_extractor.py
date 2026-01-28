@@ -10,6 +10,7 @@ from src.utils.video_utils import VideoUtils
 from src.utils.segment import Segment
 from src.utils.image_utils import ImageUtils
 from src.utils.gender_extractor_return_type import GenderExtractorReturnType
+from transformers import pipeline
 
 
 class VisualGenderExtractor(BasicGenderExtractor):
@@ -29,6 +30,8 @@ class VisualGenderExtractor(BasicGenderExtractor):
                                                               get("siglip_model_name", ""))
         self.siglip_processor = AutoProcessor.from_pretrained(config.get("speaker_enrichment", {})
                                                               .get("siglip_processor", ""))
+        self.gender_classifier = pipeline("image-classification", model="rizvandwiki/gender-classification-2",
+                                          framework="pt")
 
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
@@ -47,29 +50,36 @@ class VisualGenderExtractor(BasicGenderExtractor):
                                                save_path=self.save_screenshot_path)  # BGR format from OpenCV
         image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         # grounding dino model inference for getting found boxes
-        boxes, scores, text_labels = self._use_grounding_dino_model(image_rgb)
+        boxes, scores, text_labels = self._use_grounding_dino_model(image_rgb, text_request="man . woman .")
 
         if len(boxes) > 0:
             all_detected_objects = zip(boxes, scores, text_labels)
 
-            best_box_tensor, best_score, best_label = max(all_detected_objects,
+            # filter only to leave valid objects (those objects which have only one result class, as the model may
+            # give result as "man woman"
+            valid_objects = [
+                obj for obj in all_detected_objects
+                if not ("man" in obj[2] and "woman" in obj[2])
+            ]
+
+            if not valid_objects:
+                return None
+
+            best_box_tensor, best_score, best_label = max(valid_objects,
                                                           key=lambda x: self._get_area_of_bounding_box(x[0].tolist()))
 
             best_box_list = best_box_tensor.tolist()
             ImageUtils.crop_image_with_given_coordinates(self.save_screenshot_path, self.save_cropped_image_path,
                                                          best_box_list[0], best_box_list[1], best_box_list[2],
                                                          best_box_list[3])
-            # send the biggest box to the classification model
-            #label, score = self.use_clip_classification_model(self.save_cropped_image_path)
-            label, score = self._use_siglip_model(self.save_cropped_image_path)
-            return {"label": label, "score": score}
+
+            return {"label": best_label, "score": best_score.item()}
         return None
 
     def _use_grounding_dino_model(self, image: np.ndarray, text_request: str = "a person.") -> (
             tuple)[torch.Tensor, torch.Tensor, list]:
         """
         Uses Grounding DINO model to detect objects in the given image.
-        https://huggingface.co/IDEA-Research/grounding-dino-base
         """
         # get predictions from the image-to-text model
         text = text_request
