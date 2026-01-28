@@ -90,6 +90,24 @@ class Segment:
         self.end_ms = millisecond
         return None
 
+    def to_dict(self) -> dict:
+        return {
+            "speaker_id": self.speaker_id,
+            "total_ms_start": self.total_ms_start,
+            "total_ms_end": self.total_ms_end,
+            "start_h": self.start_h,
+            "start_m": self.start_m,
+            "start_s": self.start_s,
+            "start_ms": self.start_ms,
+            "end_h": self.end_h,
+            "end_m": self.end_m,
+            "end_s": self.end_s,
+            "end_ms": self.end_ms,
+            "speech": self.speech,
+            "gender": self.gender
+        }
+
+
     def __repr__(self):
         return (f"SPEAKER_ID: {self.speaker_id}\n"
                 f"START: {self.start_h}:{self.start_m}:{self.start_s}.{self.start_ms}\n"
