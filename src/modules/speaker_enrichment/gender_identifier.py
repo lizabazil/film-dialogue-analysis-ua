@@ -6,6 +6,7 @@ from src.utils.segment import Segment
 from src.modules.post_processing.normalizers import SegmentNormalizer
 from collections import Counter
 import json
+from src.utils.gender_extractor_return_type import GenderExtractorReturnType
 
 
 class GenderEnricher:
@@ -73,6 +74,11 @@ class GenderEnricher:
                 dict_segment = s.to_dict()
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, dict_segment)
 
+                # for debugging
+                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"audio": audio_result if audio_result is not None else None})
+                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"visual": visual_result if visual_result is not None else None})
+                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"text": text_result if text_result is not None else None})
+
         return gender_annotated_segments
 
     def _write_segment_data_to_json_lines_file(self, file_path: str, segment_dict: dict) -> None:
@@ -95,9 +101,9 @@ class GenderEnricher:
         return None
 
     def _resolve_gender_conflict(self,
-                                 audio: str | None,
-                                 visual: str | None,
-                                 text: str | None) -> str | None:
+                                 audio: GenderExtractorReturnType | None,
+                                 visual: GenderExtractorReturnType | None,
+                                 text: GenderExtractorReturnType | None) -> str | None:
         """
         Makes decision between conflicting gender predictions from audio, visual, and textual sources.
 
@@ -116,9 +122,13 @@ class GenderEnricher:
         Returns:
             str | None: The resolved gender label, or None if no predictions are provided.
         """
-        results = [res for res in [audio, visual, text] if res is not None]
+        results = [res.get("label") for res in [audio, visual, text] if res is not None]
         if not results:
             return None
+
+        # if the confidence score of text result equals 1.0 -> immediately choose its result and the final
+        if text is not None and text.get("score") == 1.0:
+            return text.get("label")
 
         if len(results) == 3:  # available all the results
             most_common, count = Counter(results).most_common(1)[0]
@@ -126,7 +136,7 @@ class GenderEnricher:
 
         # if there is only audio and visual -> priority goes to the audio
         if audio is not None and visual is not None and text is None:
-            return audio
+            return audio.get("label")
 
         if len(results) == 2:  # available only two results
             if results[0] == results[1]:  # results are the same
@@ -134,7 +144,7 @@ class GenderEnricher:
 
             # if there are 2 results, priority goes like this: text > audio > visual
             if text:
-                return text
+                return text.get("label")
             return audio
 
         # in another case, return the only possible option
