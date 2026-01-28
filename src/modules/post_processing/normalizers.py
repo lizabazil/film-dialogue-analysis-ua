@@ -1,6 +1,7 @@
 from src.utils.segment import Segment
 from src.utils.time_utils import TimeUtils
 import re
+import copy
 
 
 class SegmentNormalizer:
@@ -26,20 +27,24 @@ class SegmentNormalizer:
         """
         Works in case if one replica is split into two segments (when there is no end of sentence in first
         replica, and this sentence continues in another replica (and the speaker is the same)).
+
+        This method operates on a deep copy of the input data to prevent side effects. The input list remains unchanged.
         Args:
             segments:
 
         Returns:
-
+            list[Segment]: A new list of segments where broken replicas have been joined. The returned segments are
+            new independent instances.
         """
         if not segments:
             return []
 
+        working_segments = copy.deepcopy(segments)
         merged_segments = []
         # will be match with !.?  only if those symbols are at the end of the string
         end_of_sentence_chars = re.compile(r"[!.?]+$")
 
-        for s in segments:
+        for s in working_segments:
             if not merged_segments:
                 merged_segments.append(s)
                 continue
@@ -73,6 +78,8 @@ class SegmentNormalizer:
         This method is designed to reconstruct continuous speech flow. It checks the time gap between the end of one
         segment and the start of the next. If the gap is less than the predefined threshold (currently 2 seconds) and
         the speaker is the same, the segments are joined into one.
+        IMPORTANT: This method operates on a deep copy of the input data to prevent side effects. The input list
+        remains unchanged.
 
         Args:
             segments (list[Segment]): An ordered list of transcript segments to process.
@@ -80,14 +87,16 @@ class SegmentNormalizer:
             this value, then those segments WILL NOT be joined, even having the same speaker.
         Returns:
             list[Segment]: An edited list of segments where close replicas have been joined (their timecodes and nlp_data
-            were properly changed).
+            were properly changed).The returned segments are new independent instances.
+
         """
         if not segments:
             return []
 
+        working_segments = copy.deepcopy(segments)  # in order not to change this list in the place of calling
         merged_segments = []
         # join two replicase only if pause between them is no more than 2 seconds
-        for current_segment in segments:
+        for current_segment in working_segments:
             if not merged_segments:
                 merged_segments.append(current_segment)
                 continue
