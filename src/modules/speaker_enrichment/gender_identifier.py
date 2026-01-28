@@ -5,6 +5,7 @@ from src.modules.speaker_enrichment.text_gender_extractor import TextGenderExtra
 from src.utils.segment import Segment
 from src.modules.post_processing.normalizers import SegmentNormalizer
 from collections import Counter
+import json
 
 
 class GenderEnricher:
@@ -18,18 +19,21 @@ class GenderEnricher:
 
         self.segment_normalizer = SegmentNormalizer()
 
-    def annotate_segments(self, video_path: str, all_segments: list[Segment]):
+    def annotate_segments(self, video_path: str, all_segments: list[Segment], json_lines_file_path: str | None) -> (
+            list)[Segment]:
         """
-        Segments may not be already joined by the same speaker (especially if the pause is significant).
+        Segments by the same speaker may not be already joined (especially if the pause is significant).
         Args:
             video_path:
             all_segments:
+            json_lines_file_path:
 
         Returns:
 
         """
         next_index_to_process = 0
         total_segments = len(all_segments)
+        gender_annotated_segments = []
 
         while next_index_to_process < total_segments:
             neighbors = self._get_neighboring_segments(all_segments, target_segment_index=next_index_to_process)
@@ -56,15 +60,38 @@ class GenderEnricher:
             text_result = self.text_gender_extractor.predict_gender(target_segment=the_whole_segment_to_analyze,
                                                                     neighboring_segments=neighbors)
 
-            final_gender_decision = self._resolve_gender_conflict(audio_result.get("label", None),
-                                                                  visual_result.get("label", None),
-                                                                  text_result.get("label", None))
+            final_gender_decision = self._resolve_gender_conflict((audio_result.get("label") if audio_result is not None else None),
+                                                                  (visual_result.get("label") if visual_result is not None else None),
+                                                                  (text_result.get("label", None) if text_result is not None else None))
 
-            # for now, for debugging
-            with open("/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/temporary_files/test.txt", "a") as f:
-                f.write(f"\n------------------------------------------------------------\n"
-                        f"Segment: {the_whole_segment_to_analyze}\naudio_result: {audio_result}\nvisual result{visual_result}"
-                        f"\ntext result: {text_result}")
+            # annotate all the segments by the same speaker
+            for s in same_speaker_segments:
+                if final_gender_decision is not None:
+                    s.gender = final_gender_decision
+                gender_annotated_segments.append(s)
+                # convert segment to dict structure and save to the json lines file
+                dict_segment = s.to_dict()
+                self._write_segment_data_to_json_lines_file(json_lines_file_path, dict_segment)
+
+        return gender_annotated_segments
+
+    def _write_segment_data_to_json_lines_file(self, file_path: str, segment_dict: dict) -> None:
+        """
+        Appends a single dictionary as a JSON line to the specified file.
+
+        This method opens the file in append mode ('a'), serializes the dictionary to a JSON string, and writes it
+        followed by a newline character.
+        It uses ensure_ascii=False to preserve non-ASCII characters (e.g., Cyrillic) in their original form.
+
+        Args:
+            file_path (str): The absolute or relative path to the target .jsonl file.
+            segment_dict (dict): A dictionary containing the segment data. Must be JSON-serializable.
+
+        Returns:
+            None
+        """
+        with open(file_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(segment_dict, ensure_ascii=False) + "\n")
         return None
 
     def _resolve_gender_conflict(self,
