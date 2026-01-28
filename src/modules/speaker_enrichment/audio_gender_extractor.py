@@ -1,11 +1,11 @@
 import torch
 import torchaudio
 from src.modules.speaker_enrichment.basic_gender_extractor import BasicGenderExtractor
-from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import numpy as np
 from src.utils.audio_file_utils import AudioFileUtils
 from src.utils.segment import Segment
 from src.utils.gender_extractor_return_type import GenderExtractorReturnType
+from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2FeatureExtractor
 
 
 class AudioGenderExtractor(BasicGenderExtractor):
@@ -18,87 +18,94 @@ class AudioGenderExtractor(BasicGenderExtractor):
         super().__init__()
         self.model_name = config.get("speaker_enrichment", {}).get("audio_model_name", "")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.feature_extractor = AutoFeatureExtractor.from_pretrained(self.model_name)
-        self.model = AutoModelForAudioClassification.from_pretrained(self.model_name).to(self.device)
         self.sampling_rate = 16000  # the model needs this specific sampling rate
         self.full_audio_path = "../../../data/temporary_files/full_audio_for_gender_extractor.mp3"
         self.custom_id_to_label = {"female": "woman", "male": "man"}
         self.last_given_video_path = ""
 
+        print(f"Loading Audio Gender Model on {self.device}...")
+
+        try:
+            self.processor = Wav2Vec2FeatureExtractor.from_pretrained(self.model_name)
+            self.model = Wav2Vec2ForSequenceClassification.from_pretrained(self.model_name)
+            self.model.to(self.device)
+            self.model.eval()
+        except Exception as e:
+            print(f"Failed to load model: {e}")
+            raise e
+
+        self.id2label = {
+            0: "woman",
+            1: "man"
+        }
+
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
-        """
-        This method is designed for many segments belonging to one speaker.
-        """
-        # create audio file from video, if the video path is diffent from last added
-        # this is done in order to improve performance
-        if self.last_given_video_path != video_path:
-            AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
-            self.last_given_video_path = video_path
+        try:
+            if self.last_given_video_path != video_path:
+                print(f"Extracting full audio from video: {video_path}...")
 
-        speech_array = self._get_segment(segment.total_ms_start, segment.total_ms_end)
+                AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
+                self.last_given_video_path = video_path
 
-        inputs = self.feature_extractor(
-            speech_array,
-            sampling_rate=self.sampling_rate,
-            return_tensors="pt",
-        )
-        inputs = inputs.to(self.device)
-        logits, probs = self._use_model_to_get_prediction(inputs)
+            start_sec = segment.total_ms_start / 1000.0
+            end_sec = segment.total_ms_end / 1000.0
+            duration = end_sec - start_sec
 
-        pred_id = torch.argmax(logits, dim=-1).item()
-        score = probs[0][pred_id].item()
-        label = self.model.config.id2label[pred_id]
-        custom_label = self.custom_id_to_label.get(label, label)
+            if duration < 0.1:
+                return None
 
-        return {"label": custom_label, "score": score}
+            info = torchaudio.info(self.full_audio_path)
+            orig_sr = info.sample_rate
 
-    def _use_model_to_get_prediction(self, inputs) -> tuple:
-        """
-        Uses the audio classification model to get prediction logits and probabilities.
-        """
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-            probs = torch.nn.functional.softmax(logits, dim=-1)
-        return logits, probs
+            frame_offset = int(start_sec * orig_sr)
+            num_frames = int(duration * orig_sr)
 
-    def _prepare_speech_array_from_audio_file(self, audio_path: str) -> np.ndarray:
-        """
-        Loads an audio file and prepares a speech array suitable for audio model input.
-        """
-        speech_array, sr = torchaudio.load(audio_path)
-        if speech_array.shape[0] > 1:
-            speech_array = torch.mean(speech_array, dim=0, keepdim=True)
+            if num_frames <= 0:
+                return None
 
-        # resample the sampling rate if needed (to match model's requirements)
-        if sr != self.sampling_rate:
-            transform = torchaudio.transforms.Resample(orig_freq=sr, new_freq=self.sampling_rate)
-            speech_array = transform(speech_array)
-            sr = self.sampling_rate
+            # loading a segment
+            waveform, _ = torchaudio.load(
+                self.full_audio_path,
+                frame_offset=frame_offset,
+                num_frames=num_frames
+            )
 
-        speech_array = speech_array.squeeze().numpy()
-        return speech_array
+            if waveform.shape[0] > 1:
+                speech = waveform.mean(dim=0)
+            else:
+                speech = waveform.squeeze(0)
 
-    def _get_segment(self, start_ms: int, end_ms: int) -> np.ndarray:
-        metadata = torchaudio.info(self.full_audio_path)
-        orig_sr = metadata.sample_rate
+            speech = speech.numpy()
 
-        # get frames
-        start_frame = int((start_ms / 1000) * orig_sr)
-        num_frames = int(((end_ms - start_ms) / 1000) * orig_sr)
+            if len(speech) == 0:
+                return None
 
-        waveform, sr = torchaudio.load(
-            self.full_audio_path,
-            frame_offset=start_frame,   # frame_offset is a jump into the file
-            num_frames=num_frames,
-            normalize=True
-        )
+            inputs = self.processor(
+                speech,
+                sampling_rate=self.sampling_rate,
+                return_tensors="pt",
+                padding=True
+            )
 
-        # convert to mono
-        if waveform.shape[0] > 1:
-            waveform = torch.mean(waveform, dim=0, keepdim=True)
+            inputs = {key: val.to(self.device) for key, val in inputs.items()}
 
-        if sr != self.sampling_rate:
-            resampler = torchaudio.transforms.Resample(sr, self.sampling_rate)
-            waveform = resampler(waveform)
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=1).squeeze()
 
-        return waveform.squeeze().numpy()
+                if probs.dim() == 0:
+                    probs = torch.tensor([1.0 - probs, probs]).to(self.device)
+
+                predicted_id = torch.argmax(probs).item()
+                confidence_score = probs[predicted_id].item()
+
+            predicted_label = self.id2label.get(predicted_id, "unknown")
+
+            return {
+                "label": predicted_label,
+                "score": round(confidence_score, 4)
+            }
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
