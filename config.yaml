@@ -3,15 +3,11 @@ speech_to_text_model:
 
 speaker_enrichment:
   # models for identifying speakers' gender
-  audio_model_name: "alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech"
-  image_model_name: "IDEA-Research/grounding-dino-base"
+  audio_model_name: "prithivMLmods/Common-Voice-Geneder-Detection"
+  #image_model_name: "IDEA-Research/grounding-dino-base"
+  image_model_name: "IDEA-Research/grounding-dino-tiny"
   siglip_model_name: "google/siglip-so400m-patch14-384"
   siglip_processor: "google/siglip-so400m-patch14-384"
-
-  voting_weights:  # weights to give each of the approaches when combining results
-    audio: 0.0   # by audio
-    image: 0.0   # by image (screenshot)
-    text: 0.0    # by text (transcript analysis with UDPipe)
 
 llm_transcriber:
   model_name: "gemini-2.5-flash"  # this model will be used for creating transcripts
