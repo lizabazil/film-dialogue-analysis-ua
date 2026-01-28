@@ -61,9 +61,9 @@ class GenderEnricher:
             text_result = self.text_gender_extractor.predict_gender(target_segment=the_whole_segment_to_analyze,
                                                                     neighboring_segments=neighbors)
 
-            final_gender_decision = self._resolve_gender_conflict((audio_result.get("label") if audio_result is not None else None),
-                                                                  (visual_result.get("label") if visual_result is not None else None),
-                                                                  (text_result.get("label", None) if text_result is not None else None))
+            final_gender_decision = self._resolve_gender_conflict((audio_result if audio_result is not None else None),
+                                                                  (visual_result if visual_result is not None else None),
+                                                                  (text_result if text_result is not None else None))
 
             # annotate all the segments by the same speaker
             for s in same_speaker_segments:
@@ -74,7 +74,7 @@ class GenderEnricher:
                 dict_segment = s.to_dict()
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, dict_segment)
 
-                # for debugging
+                # TODO: delete, made only for debugging
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, {"audio": audio_result if audio_result is not None else None})
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, {"visual": visual_result if visual_result is not None else None})
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, {"text": text_result if text_result is not None else None})
