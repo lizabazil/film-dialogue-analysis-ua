@@ -108,11 +108,13 @@ class GenderEnricher:
         Makes decision between conflicting gender predictions from audio, visual, and textual sources.
 
         The resolution logic follows a hierarchy based on data availability:
-        1. **Three sources available**: Uses majority voting (2 vs 1) or consensus.
-        2. **Two sources available**:
+        1. If text result is available and its confidence equals to 1.0, then the final result will be taken directly
+         from the text result, as it's highly reliable information.
+        2. Three sources available: Uses majority voting (2 vs 1) or consensus.
+        3. Two sources available:
             - If they agree: Returns the common prediction.
             - If they disagree: Follows the priority **Text > Audio > Visual**.
-        3. **One source available**: Returns the single available prediction.
+        4. One source available: Returns the single available prediction.
 
         Args:
             audio (str | None): Gender predicted from audio analysis (e.g., 'man', 'woman').
@@ -122,7 +124,7 @@ class GenderEnricher:
         Returns:
             str | None: The resolved gender label, or None if no predictions are provided.
         """
-        results = [res.get("label") for res in [audio, visual, text] if res is not None]
+        results = [res for res in [audio, visual, text] if res is not None]
         if not results:
             return None
 
@@ -130,25 +132,21 @@ class GenderEnricher:
         if text is not None and text.get("score") == 1.0:
             return text.get("label")
 
+        only_labels = [label.get("label") for label in results]
+        if len(only_labels) == 1:
+            return only_labels[0]
+
         if len(results) == 3:  # available all the results
-            most_common, count = Counter(results).most_common(1)[0]
+            counts = Counter(only_labels)
+            most_common, count = counts.most_common(1)[0]
             return most_common
 
-        # if there is only audio and visual -> priority goes to the audio
-        if audio is not None and visual is not None and text is None:
+        # priority goes like this: text > audio > visual
+        if text is not None:
+            return text.get("label")
+        if audio is not None:
             return audio.get("label")
-
-        if len(results) == 2:  # available only two results
-            if results[0] == results[1]:  # results are the same
-                return results[0]
-
-            # if there are 2 results, priority goes like this: text > audio > visual
-            if text:
-                return text.get("label")
-            return audio
-
-        # in another case, return the only possible option
-        return results[0]
+        return visual.get("label")
 
     def _collect_segments_of_same_speaker(self, all_segments: list[Segment], target_segment_index: int) -> (
             tuple)[list[Segment], int]:
