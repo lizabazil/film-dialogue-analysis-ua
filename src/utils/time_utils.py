@@ -89,3 +89,35 @@ class TimeUtils:
         """
         difference_in_ms = segment_2.total_ms_start - segment_1.total_ms_end
         return difference_in_ms // 1000
+
+    @staticmethod
+    def convert_seconds_to_proper_format(seconds: float) -> tuple[int, int, int, int]:
+        """
+        Converts time in seconds to proper time in hours, minutes, seconds and milliseconds.
+        Args:
+            seconds (float): Value of seconds.
+
+        Returns:
+            tuple[int, int, int, int]: Converted to: hours, minutes, seconds, milliseconds.
+        """
+        total_seconds = int(seconds)
+        milliseconds = round((seconds - total_seconds) * 1000)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return hours, minutes, seconds, milliseconds
+
+    @staticmethod
+    def parse_time_to_seconds(time_str: str) -> float:
+        """
+        Converts a 'HH:MM:SS.ms' string to total seconds as a float.
+        Args:
+            time_str (str): Time expressed as a string in format 'HH:MM:SS.ms'.
+
+        Returns:
+            float: Get the float value of absolute seconds.
+        """
+        h, m, s_ms = time_str.split(':')
+        s, ms = s_ms.split('.')
+        total_seconds = int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
+        return total_seconds
