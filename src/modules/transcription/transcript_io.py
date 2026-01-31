@@ -4,7 +4,7 @@ from src.utils.segment import Segment
 from src.utils.time_utils import TimeUtils
 
 
-class RawTranscriptParser:
+class TranscriptIO:
     """
     Parses a raw text file (transcript) with timestamps, speaker IDs and replicas into structured segments.
     The file much contain data, where each line is in format like this:
@@ -43,6 +43,34 @@ class RawTranscriptParser:
             segments.append(segment)
 
         return segments
+
+    def save(self, segments: list[Segment], output_file_path: str) -> None:
+        """
+        Persists the list of transcript segments to a text file in a structured format.
+
+        This method writes each segment to a new line using a pipe-delimited format that includes the speaker ID,
+        formatted timestamps, and the spoken text.
+
+        The output format is: 'SPEAKER_ID | [HH:MM:SS.ms --> HH:MM:SS.ms]| SPEECH TEXT'
+
+        Args:
+            segments (list[Segment]): A list of processed Segment objects containing speaker IDs, broken-down
+            timestamps (h, m, s, ms), and text content.
+            output_file_path (str): The destination path for the output file. If the file already exists, it will be
+            overwritten.
+
+        Returns:
+            None
+
+        Raises:
+            IOError: If the system fails to open or write to the specified file.
+        """
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            for segment in segments:
+                f.write(f"{segment.speaker_id} | "
+                        f"[{TimeUtils.format_time_str(segment.start_h, segment.start_m, segment.start_s, segment.start_ms)} "
+                        f" --> {TimeUtils.format_time_str(segment.end_h, segment.end_m, segment.end_s, segment.end_ms)}]"
+                        f"| {segment.speech}\n")
 
     @staticmethod
     def _remove_brackets(timecode: str) -> str:
