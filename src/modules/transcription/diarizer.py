@@ -1,13 +1,18 @@
+import os
+
 from pyannote.audio import Pipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
 import torch
 import torchaudio
 from pyannote.audio.core.task import Specifications, Problem, Resolution
 from pyannote.core import Annotation
+from dotenv import load_dotenv
 
 
 class PyannoteDiarizer:
-    def __init__(self, hf_token):
+    def __init__(self, config: dict):
+        hf_token = self._load_hugging_face_token(config)
+
         try:
             torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
             torch.serialization.add_safe_globals([
@@ -26,6 +31,33 @@ class PyannoteDiarizer:
         except Exception as e:
             print(f"CRITICAL ERROR initializing pipeline: {e}")
             self.pipeline = None
+
+    def _load_hugging_face_token(self, config: dict) -> str:
+        """
+        Retrieves the Hugging Face authentication token from environment variables.
+
+        This method initializes environment variables (using `load_dotenv`) and fetches the API token. The specific
+        name of the environment variable to look for is determined by the "hugging_face_token_name" key in the provided
+        configuration.
+        This token is required for accessing gated models (like Pyannote).
+
+        Args:
+            config (dict): The configuration dictionary. Must contain the key "hugging_face_token_name"
+            (e.g., pointing to 'HF_TOKEN').
+
+        Returns:
+            str: The Hugging Face API token.
+
+        Raises:
+            ValueError: If the token is not found in the environment variables.
+        """
+        load_dotenv()
+        name_of_key = config.get("hugging_face_token_name")
+        hf_token = os.getenv(name_of_key)
+
+        if not hf_token:
+            raise ValueError(f"Hugging Face token was not found in the environment variable: {name_of_key}")
+        return hf_token
 
     def diarize(self, audio_path: str) -> Annotation | None:
         """
