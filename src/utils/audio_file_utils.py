@@ -1,6 +1,9 @@
 import os.path
 import subprocess
 from pydub import AudioSegment
+import numpy as np
+import torchaudio
+import torchaudio.transforms as T
 
 
 class AudioFileUtils:
@@ -94,3 +97,36 @@ class AudioFileUtils:
         mid_seconds.export(output_file_path, format="mp3")
         return None
 
+    @staticmethod
+    def load_audio_as_mono_numpy(path: str, target_sample_rate: int = 16000) -> tuple[np.ndarray, int]:
+        """
+        Loads an audio file, resamples it, and mixes it down to a mono NumPy array.
+
+        This utility prepares audio data for ML models (like Whisper) by ensuring the output is single-channel (mono)
+        and matches the required sample rate. It handles stereo-to-mono conversion by averaging channels and flattens
+        the result into a 1D array.
+
+        Args:
+            path (str): The file system path to the audio file (e.g., .wav, .mp3).
+            target_sample_rate (int, optional): The desired sample rate in Hz. Default value is 16000 (standard for
+            Whisper).
+
+        Returns:
+            tuple[np.ndarray, int]: A tuple containing:
+                1. The audio waveform as a 1D NumPy array (shape: `(n_samples,)`).
+                2. The final sample rate (int).
+
+        Raises:
+            RuntimeError: If torchaudio fails to load the file (e.g., corrupted file).
+        """
+        waveform, original_sr = torchaudio.load(path)
+
+        if original_sr != target_sample_rate:
+            resampler = T.Resample(original_sr, target_sample_rate)
+            waveform = resampler(waveform)
+
+        if waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+
+        audio_numpy = waveform.squeeze().numpy()
+        return audio_numpy, target_sample_rate
