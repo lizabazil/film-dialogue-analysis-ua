@@ -65,7 +65,7 @@ class NLPUDPipeParser:
             str: A single string containing all extracted sentences, delimited by newline characters ('\n').
         """
         # using positive lookbehind
-        regex_to_detect_end_of_sentence = re.compile(r"(?<=[.!?])\s+(?=[A-ZА-ЩЬЮЯҐЄІЇ])")
+        regex_to_detect_end_of_sentence = re.compile(r"(?<=[.!?])\s+(?=[A-ZА-ЩЬЮЯҐЄІЇa-zа-щьюяґєії])")
         res_str = ""
         for segment in segments:
             current_speech = regex_to_detect_end_of_sentence.sub("\n", segment.speech)
