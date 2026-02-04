@@ -15,7 +15,7 @@ export function UploadArea({ onFileSelected }) {
         openRef={openRef}
         onDrop={(files) => onFileSelected(files[0])} // Беремо перший файл
         onReject={(files) => console.log('rejected files', files)}
-        maxSize={5 * 1024 ** 3} // Дозволяємо до 5 GB
+        maxSize={7 * 1024 ** 3} // allow files up to 7 GB
         accept={[MIME_TYPES.mp4, 'video/x-matroska', 'video/avi']}
         radius="lg"
         styles={{
