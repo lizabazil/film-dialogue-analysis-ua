@@ -80,3 +80,32 @@ class VideoUtils:
         except Exception as e:
             print(f"Error extracting subtitles: {e}")
             return None
+
+    @staticmethod
+    def cut_video_segment(
+            input_path: str,
+            output_path: str,
+            start_h: int, start_m: int, start_s: int, start_ms: int,
+            end_h: int, end_m: int, end_s: int, end_ms: int
+    ):
+        """
+        Cuts a video segment based on precise start and end times.
+        """
+        start_time = f"{start_h:02d}:{start_m:02d}:{start_s:02d}.{start_ms:03d}"
+        end_time = f"{end_h:02d}:{end_m:02d}:{end_s:02d}.{end_ms:03d}"
+
+        command = [
+            "ffmpeg",
+            "-y",
+            "-i", input_path,
+            "-ss", start_time,
+            "-to", end_time,
+            "-c:v", "libx264", "-c:a", "aac",
+            output_path
+        ]
+
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Video segment saved to: {output_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error cutting video: {e}")
