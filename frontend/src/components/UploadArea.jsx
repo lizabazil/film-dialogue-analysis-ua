@@ -13,7 +13,7 @@ export function UploadArea({ onFileSelected }) {
 
       <Dropzone
         openRef={openRef}
-        onDrop={(files) => onFileSelected(files[0])} // Беремо перший файл
+        onDrop={(files) => onFileSelected(files[0])} // handle first file selection
         onReject={(files) => console.log('rejected files', files)}
         maxSize={7 * 1024 ** 3} // allow files up to 7 GB
         accept={[MIME_TYPES.mp4, 'video/x-matroska', 'video/avi']}
@@ -51,7 +51,7 @@ export function UploadArea({ onFileSelected }) {
               Drag movie file here or click to select
             </Text>
             <Text size="sm" c="dimmed" inline mt={7}>
-              Support: MP4, MKV, AVI (Max 5GB)
+              Supports: MP4, MKV, AVI (Max 7GB)
             </Text>
           </div>
         </Group>
