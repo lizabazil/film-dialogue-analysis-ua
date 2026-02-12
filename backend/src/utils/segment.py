@@ -107,10 +107,10 @@ class Segment:
             "gender": self.gender
         }
 
-
     def __repr__(self):
         return (f"SPEAKER_ID: {self.speaker_id}\n"
                 f"START: {self.start_h}:{self.start_m}:{self.start_s}.{self.start_ms}\n"
                 f"END: {self.end_h}:{self.end_m}:{self.end_s}.{self.end_ms}\n"
                 f"SPEECH: {self.speech}\n"
+                f"GENDER: {self.gender}\n"
                 f"NLP_DATA: {self.nlp_data}\n")
