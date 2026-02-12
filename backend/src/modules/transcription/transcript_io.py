@@ -70,7 +70,7 @@ class TranscriptIO:
                 f.write(f"{segment.speaker_id} | "
                         f"[{TimeUtils.format_time_str(segment.start_h, segment.start_m, segment.start_s, segment.start_ms)} "
                         f" --> {TimeUtils.format_time_str(segment.end_h, segment.end_m, segment.end_s, segment.end_ms)}]"
-                        f"| {segment.speech}\n")
+                        f" | {segment.speech}\n")
 
     @staticmethod
     def _remove_brackets(timecode: str) -> str:
