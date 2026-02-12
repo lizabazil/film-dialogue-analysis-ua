@@ -5,7 +5,9 @@ import re
 class SrtTranscriptParser:
     REPLICA_NUMBER_PATTERN = re.compile(r"\d+")
     SRT_TIMECODE_PATTERN = re.compile(r"\d+:\d+:\d+,\d+\s*-->\s*\d+:\d+:\d+,\d+")
-    SPEAKER_PATTERN = re.compile(r"[А-ЩЬЮЯҐЄІЇа-щьюяґєіїa-zA-Z0-9\w]+")
+    SPEAKER_PATTERN = re.compile(r"\[([FM][А-ЩЬЮЯҐЄІЇа-щьюяґєіїa-zA-Z0-9\w]+)\]")
+    ALL_BRACKETS_PATTERN = re.compile(r"\[.*?\]")
+    SEGMENT_PATTERN = re.compile(r"(?:^|-)\s*\[(?P<speaker>[FM][А-ЩЬЮЯҐЄІЇа-щьюяґєіїa-zA-Z0-9\w]+)\]\s*(?P<speech>.*?)(?=\s*(?:^-|\[[FM]|$))")
 
     TimeCode = tuple[int, int, int, int]  # h, m, s, ms
 
@@ -18,6 +20,8 @@ class SrtTranscriptParser:
 
         current_segment = None
         parsed_segments = []
+        last_parsed_start_timecode_tuple = None
+        last_parsed_end_timecode_tuple = None
 
         for line in lines:
             if self._is_replica_number(line):  # exsessive info (id of replica), go to the next line
@@ -32,15 +36,31 @@ class SrtTranscriptParser:
                 parsed_start_timecode_tuple = self._parse_timecode(start_timecode)  # tuple
                 parsed_end_timecode_tuple = self._parse_timecode(end_timecode)  # tuple
 
+                last_parsed_start_timecode_tuple = parsed_start_timecode_tuple
+                last_parsed_end_timecode_tuple = parsed_end_timecode_tuple
+
                 current_segment.set_start_time(*parsed_start_timecode_tuple)
                 current_segment.set_end_time(*parsed_end_timecode_tuple)
 
             else:  # speech text
                 speaker = self._infer_speaker_from_replica(line)
+                speech = self._get_speech(line)
+
+                if line.startswith("-") and speaker and (current_segment.speech):
+                    # save last created segment
+                    parsed_segments.append(current_segment)
+                    # create new segment and copy there timecodes
+
+                    current_segment = Segment()
+                    current_segment.set_start_time(*last_parsed_start_timecode_tuple)
+                    current_segment.set_end_time(*last_parsed_end_timecode_tuple)
+
                 if speaker:
                     current_segment.speaker_id = speaker
-
-                speech = self._get_speech(line)
+                    if speaker.startswith("M"):
+                        current_segment.gender = "man"
+                    elif speaker.startswith("F"):
+                        current_segment.gender = "woman"
                 if speech:
                     if current_segment.speech:
                         current_segment.speech += (" " + speech)
@@ -53,8 +73,8 @@ class SrtTranscriptParser:
         return parsed_segments
 
     def _get_speech(self, line: str) -> str:
-        line_without_speaker = self.SPEAKER_PATTERN.sub("", line)
-        clean_text = line_without_speaker.lstrip(" :.-")  # clean exsessive symbols from the left
+        line_without_brackets = self.ALL_BRACKETS_PATTERN.sub("", line)
+        clean_text = line_without_brackets.lstrip(" :.-")  # clean exsessive symbols from the left
         return clean_text
 
     def _parse_timecode(self, timecode: str) -> TimeCode:
