@@ -8,6 +8,10 @@ from src.utils.file_utils import FileUtils
 from google.api_core import exceptions
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
+import secrets
+import string
+from datetime import datetime
+from pathlib import Path
 
 
 def get_last_n_lines_from_response(response: str, last_n_lines: int = 30) -> str:
@@ -102,9 +106,9 @@ class LLMTranscriber:
         self.overlap_in_min = config.get("llm_transcriber", {}).get("overlap_in_min", 1)
 
         # here will be saved the full audio file of the given video
-        self.full_audio_path = "../../../data/temporary_files/full_audio.mp3"
+        self.full_audio_path = self._generate_path_with_given_main_name("full_audio_for_transciber")
 
-        self.temp_path_to_cut_audio_file = "../../../data/temporary_files/cut_audio.mp3"
+        self.temp_path_to_cut_audio_file = self._generate_path_with_given_main_name("cut_audio_for_transcriber")
         self.names_of_api_keys = config["llm_transcriber"]["api_keys_config"]["env_variables_names"]
         self.next_key_index = 0
 
@@ -112,6 +116,13 @@ class LLMTranscriber:
         self._take_next_key()  # initialize model with the very first api key
 
         self.prev_response = ""
+
+    def _generate_path_with_given_main_name(self, main_name: str, ds_directory: str = "../../../data/temporary_files"):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        random_suffix = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(6))
+        directory = Path(ds_directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        return str(directory / f"{main_name}_{timestamp}_{random_suffix}.mp3")
 
     def _take_next_key(self) -> None:
         """
