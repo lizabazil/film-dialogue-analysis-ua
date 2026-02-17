@@ -17,7 +17,6 @@ class GenderEnricher:
         self.audio_gender_extractor = AudioGenderExtractor(config)
         self.visual_gender_extractor = VisualGenderExtractor(config)
         self.text_gender_extractor = TextGenderExtractor()
-
         self.segment_normalizer = SegmentNormalizer()
 
     def annotate_segments(self, video_path: str, all_segments: list[Segment], json_lines_file_path: str | None) -> (
@@ -73,11 +72,6 @@ class GenderEnricher:
                 # convert segment to dict structure and save to the json lines file
                 dict_segment = s.to_dict()
                 self._write_segment_data_to_json_lines_file(json_lines_file_path, dict_segment)
-
-                # TODO: delete, made only for debugging
-                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"audio": audio_result if audio_result is not None else None})
-                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"visual": visual_result if visual_result is not None else None})
-                self._write_segment_data_to_json_lines_file(json_lines_file_path, {"text": text_result if text_result is not None else None})
 
         return gender_annotated_segments
 
