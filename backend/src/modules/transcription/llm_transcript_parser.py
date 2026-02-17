@@ -3,6 +3,7 @@ from src.utils.time_utils import TimeUtils
 from src.utils.file_utils import FileUtils
 import os
 from itertools import groupby
+import json
 
 
 class LLMTranscriptParser:
@@ -11,13 +12,23 @@ class LLMTranscriptParser:
     It creates new text file with cleaned transcript and proper timecodes.
     """
     SPEAKER_PATTERN = re.compile(r"(SPEAKER.*?):")
-    SPEECH_PATTERN = re.compile(r"SPEAKER_\w+:\s+(.*)")
+    SPEAKER_WITH_GENDER_PATTERN = re.compile(r"(SPEAKER_\d+)\s*\((.*?)\)(?=:)")
+    #SPEECH_PATTERN = re.compile(r"SPEAKER_\w+:\s+(.*)")
+    SPEECH_PATTERN = re.compile(r"SPEAKER_.*?:[ \t]+(?P<speech>.*)")  # works for files with and without gender marks
     TIMECODE_PATTERN = re.compile(r"\[(.*?)\s*-\s*(.*?)]")
     SPEAKER_PERSONAL_NUM_PATTERN = re.compile(r"SPEAKER_(\d+)")
+    GENDER_PATTERN = re.compile(r"\((.*?)\)(?=:)")
 
     TimeCode = tuple[int, int, int, int]  # hour, minute, second, millisecond
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, with_gender_mark: bool = False):
+        """
+
+        Args:
+            config:
+            with_gender_mark: If there is already specified gender in the transcript, then this argument should be
+            set to True, otherwise False.
+        """
         self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 0)
         self.overlap_in_min = config.get("llm_transcriber", {}).get("overlap_in_min", 0)
         self.step_ms = (TimeUtils.convert_to_ms(0, self.chunk_length_in_min, 0, 0) -
@@ -54,7 +65,7 @@ class LLMTranscriptParser:
         hour, minute, second, ms = 0, int(parts[-3]), int(parts[-2]), int(parts[-1])
         return hour, minute, second, ms
 
-    def parse(self, txt_file_path: str, txt_output_file_path: str) -> None:
+    def parse(self, txt_file_path: str, txt_output_file_path: str = "", jsonl_output_file_path: str = "") -> None:
         """
         Reads and parses raw file, provided by LLM, in order to set clean structure of it (this includes setting
         proper timecodes for each replica and dealing with overlap zones).
@@ -69,7 +80,10 @@ class LLMTranscriptParser:
         """
         txt_file_path = os.path.abspath(txt_file_path)
         # delete file if such exists in order to start with new file
-        FileUtils.delete_file(txt_output_file_path)
+        if txt_output_file_path:
+            FileUtils.delete_file(txt_output_file_path)
+        elif jsonl_output_file_path:
+            FileUtils.delete_file(jsonl_output_file_path)
 
         with open(txt_file_path, "r") as raw_file:
             lines = [line.strip() for line in raw_file]
@@ -80,15 +94,25 @@ class LLMTranscriptParser:
                 chunk = "\n".join(group)
                 all_chunks.append(chunk)
 
-        final_lines = self._remove_excessive_overlap_speech(all_chunks)
+        if jsonl_output_file_path:
+            final_lines = self._remove_excessive_overlap_speech(all_chunks, True)
+        else:
+            final_lines = self._remove_excessive_overlap_speech(all_chunks)
+
         # write (append) to a new file
-        with open(txt_output_file_path, 'a') as output_file:
-            for line in final_lines:
-                output_file.write(f"{line}\n")
+        if txt_output_file_path:
+            with open(txt_output_file_path, 'a') as output_file:
+                for line in final_lines:
+                    output_file.write(f"{line}\n")
+
+        elif jsonl_output_file_path:
+            with open(jsonl_output_file_path, "a", encoding="utf-8") as f:
+                for segment_dict in final_lines:
+                    f.write(json.dumps(segment_dict, ensure_ascii=False) + "\n")
 
         return None
 
-    def _remove_excessive_overlap_speech(self, raw_chunks: list[str]) -> list[str]:
+    def _remove_excessive_overlap_speech(self, raw_chunks: list[str], with_gender: bool = False) -> list[str]:
         """
         Processes raw transcript chunks to create a continuous, non-overlapping timeline.
 
@@ -134,7 +158,11 @@ class LLMTranscriptParser:
                 if (real_timecode_start >= cutoff_ms + thirty_sec_in_ms) or (real_timecode_start_ms < thirty_sec_in_ms):
                     continue
 
-                speaker = self._get_speaker(line)
+                if with_gender:  # get speaker and gender at the same time
+                    speaker, gender = self._get_speaker_with_gender(line)
+                else:
+                    speaker = self._get_speaker(line)
+
                 speaker = self._generate_unique_speaker_id(speaker, i)  # get new speaker id
                 speech = self._get_speech(line)
 
@@ -150,21 +178,23 @@ class LLMTranscriptParser:
                     "speaker": speaker,
                     "speech": speech
                 }
+                if with_gender and gender:  # add gender if such file has it
+                    current_segment["gender"] = gender
 
                 if last_segment is not None:
                     if last_segment["end"] > current_segment["start"]:
                         last_segment["end"] = current_segment["start"]
 
-                    self._format_and_append_segment(final_lines, last_segment)
+                    self._format_and_append_segment(final_lines, last_segment, with_gender)
 
                 last_segment = current_segment
 
         if last_segment is not None:
-            self._format_and_append_segment(final_lines, last_segment)
+            self._format_and_append_segment(final_lines, last_segment, with_gender)
 
         return final_lines
 
-    def _format_and_append_segment(self, final_lines_list, segment_data) -> None:
+    def _format_and_append_segment(self, final_lines_list, segment_data, with_gender: bool = False) -> None:
         """
         Formats the segment data into the final string representation and appends it to the list.
         This method is responsible for the conversion of timestamps (from total ms to string format), which allows
@@ -184,6 +214,25 @@ class LLMTranscriptParser:
         """
         start_time_tuple = TimeUtils.convert_ms_to_normal(segment_data.get('start'))
         end_time_tuple = TimeUtils.convert_ms_to_normal(segment_data.get('end'))
+
+        if with_gender:
+            final_line_in_ts = {
+            "speaker_id": segment_data.get("speaker"),
+            "total_ms_start": segment_data.get("start"),
+            "total_ms_end": segment_data.get("end"),
+            "start_h": start_time_tuple[0],
+            "start_m": start_time_tuple[1],
+            "start_s": start_time_tuple[2],
+            "start_ms": start_time_tuple[3],
+            "end_h": end_time_tuple[0],
+            "end_m": end_time_tuple[1],
+            "end_s": end_time_tuple[2],
+            "end_ms": end_time_tuple[3],
+            "speech": segment_data.get("speech"),
+            "gender": segment_data.get("gender")
+            }
+            final_lines_list.append(final_line_in_ts)
+            return None
 
         start_time_formatted = TimeUtils.format_time_str(*start_time_tuple)
         end_time_formatted = TimeUtils.format_time_str(*end_time_tuple)
@@ -212,6 +261,15 @@ class LLMTranscriptParser:
             return speaker_id
         return ""
 
+    def _get_speaker_with_gender(self, line: str) -> tuple[str, str]:
+        match = re.search(self.SPEAKER_WITH_GENDER_PATTERN, line)
+        if match:
+            speaker_id = match.group(1)
+            gender = match.group(2)
+            gender_str = "woman" if gender == "F" else "man" if gender == "M" else "unknown"
+            return speaker_id, gender_str
+        return "", ""
+
     def _get_speech(self, line: str) -> str:
         """
         Searches for speech in the line. It works with LLM output.
@@ -226,7 +284,7 @@ class LLMTranscriptParser:
         """
         match_speech = re.search(self.SPEECH_PATTERN, line)
         if match_speech:
-            speech = match_speech.group(1)
+            speech = match_speech.group("speech")
             return speech
         return ""
 
