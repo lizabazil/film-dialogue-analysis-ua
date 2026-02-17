@@ -17,7 +17,7 @@ class LLMTranscriptParser:
     SPEECH_PATTERN = re.compile(r"SPEAKER_.*?:[ \t]+(?P<speech>.*)")  # works for files with and without gender marks
     TIMECODE_PATTERN = re.compile(r"\[(.*?)\s*-\s*(.*?)]")
     SPEAKER_PERSONAL_NUM_PATTERN = re.compile(r"SPEAKER_(\d+)")
-    GENDER_PATTERN = re.compile(r"\((.*?)\)(?=:)")
+    GENDER_PATTERN = re.compile(r"\(?([FMU])\)?(?=:)")
 
     TimeCode = tuple[int, int, int, int]  # hour, minute, second, millisecond
 
@@ -313,7 +313,7 @@ class LLMTranscriptParser:
         """
         In some cases, LLM may not add any speech from the speaker. Instead, there may be just comments about the sound.
         For example, [Noise], [Melody] and so on.
-        This method just searches for brackets ( '()' and '[]') in the given string.
+        This method just searches for brackets ( '(text)', '[text]' and '*text*) in the given string.
 
         If the detected speech text contains that kind of text, then this line should be removed from the transcript.
 
@@ -329,4 +329,5 @@ class LLMTranscriptParser:
             return False
         match_one = re.search(r"\(.*\)", speech)
         match_two = re.search(r"\[.*\]", speech)
-        return False if match_one or match_two else True
+        match_three = re.search(r"\*.*\*", speech)
+        return False if match_one or match_two or match_three else True
