@@ -65,7 +65,7 @@ class LLMTranscriptParser:
         hour, minute, second, ms = 0, int(parts[-3]), int(parts[-2]), int(parts[-1])
         return hour, minute, second, ms
 
-    def parse(self, txt_file_path: str, txt_output_file_path: str = "", jsonl_output_file_path: str = "") -> None:
+    def parse(self, txt_file_path: str, output_file_path: str = "", with_gender_notes: bool = False) -> None:
         """
         Reads and parses raw file, provided by LLM, in order to set clean structure of it (this includes setting
         proper timecodes for each replica and dealing with overlap zones).
@@ -73,17 +73,15 @@ class LLMTranscriptParser:
 
         Args:
             txt_file_path (txt): Path to the raw transcript file.
-            txt_output_file_path (txt): Path to the new file to save structured transcript.
+            output_file_path (txt): Path to the new file to save structured transcript.
+            with_gender_notes (bool): States whether file already has notes about speakers' genders. If it equals to
+            True, then the 'output_file_path' is supposed to be a .jsonl file, otherwise output file will be .txt.
 
         Returns:
             None
         """
-        txt_file_path = os.path.abspath(txt_file_path)
         # delete file if such exists in order to start with new file
-        if txt_output_file_path:
-            FileUtils.delete_file(txt_output_file_path)
-        elif jsonl_output_file_path:
-            FileUtils.delete_file(jsonl_output_file_path)
+        FileUtils.delete_file(output_file_path)
 
         with open(txt_file_path, "r") as raw_file:
             lines = [line.strip() for line in raw_file]
@@ -94,19 +92,16 @@ class LLMTranscriptParser:
                 chunk = "\n".join(group)
                 all_chunks.append(chunk)
 
-        if jsonl_output_file_path:
-            final_lines = self._remove_excessive_overlap_speech(all_chunks, True)
-        else:
-            final_lines = self._remove_excessive_overlap_speech(all_chunks)
+        final_lines = self._remove_excessive_overlap_speech(all_chunks, with_gender=with_gender_notes)
 
         # write (append) to a new file
-        if txt_output_file_path:
-            with open(txt_output_file_path, 'a') as output_file:
+        if not with_gender_notes:  # write to .txt file withour gender notes
+            with open(output_file_path, 'a') as output_file:
                 for line in final_lines:
                     output_file.write(f"{line}\n")
 
-        elif jsonl_output_file_path:
-            with open(jsonl_output_file_path, "a", encoding="utf-8") as f:
+        elif with_gender_notes:  # output file path is supposed to be .jsonl file
+            with open(output_file_path, "a", encoding="utf-8") as f:
                 for segment_dict in final_lines:
                     f.write(json.dumps(segment_dict, ensure_ascii=False) + "\n")
 
