@@ -1,23 +1,21 @@
 # will be using image-to-text model to identify person on the image
 from src.modules.speaker_enrichment.basic_gender_extractor import BasicGenderExtractor
 import torch
-from transformers import (AutoModel, AutoProcessor, AutoModelForZeroShotObjectDetection)
+from transformers import (AutoProcessor, AutoModelForZeroShotObjectDetection)
 from PIL import Image
 import cv2
 import numpy as np
 from src.utils.time_utils import TimeUtils
 from src.utils.video_utils import VideoUtils
 from src.utils.segment import Segment
-from src.utils.image_utils import ImageUtils
 from src.utils.gender_extractor_return_type import GenderExtractorReturnType
-from transformers import pipeline
+from pathlib import Path
+import secrets
+import string
+import os
 
 
 class VisualGenderExtractor(BasicGenderExtractor):
-    # paths mostly for debugging  # TODO: improve/change paths
-    save_screenshot_path = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_temp.jpg" #"../../../data/screenshots/screen_temp.jpg"
-    save_cropped_image_path = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_crop.jpg" #"../../../data/screenshots/screen_crop.jpg"
-    save_screenshot_with_points = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/screenshots/screen_with_points.jpg" #"../../../data/screenshots/screen_with_points.jpg"
 
     def __init__(self, config: dict):
         super().__init__()
@@ -26,12 +24,15 @@ class VisualGenderExtractor(BasicGenderExtractor):
         self.processor = AutoProcessor.from_pretrained(self.model_name)
         self.model = AutoModelForZeroShotObjectDetection.from_pretrained(self.model_name).to(self.device)
 
-        self.siglip_model = AutoModel.from_pretrained(config.get("speaker_enrichment", {}).
-                                                              get("siglip_model_name", ""))
-        self.siglip_processor = AutoProcessor.from_pretrained(config.get("speaker_enrichment", {})
-                                                              .get("siglip_processor", ""))
-        self.gender_classifier = pipeline("image-classification", model="rizvandwiki/gender-classification-2",
-                                          framework="pt")
+    def _create_temp_screenshot_path(self, h, m, s, ms) -> str:
+        # add segment time to the file name, for example, 01_22_30_500
+        time_mark = f"{h:02d}_{m:02d}_{s:02d}_{ms:03d}"
+        random_suffix = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(6))
+
+        directory = Path("../../../data/screenshots")
+        directory.mkdir(parents=True, exist_ok=True)
+
+        return str(directory / f"screenshot_{time_mark}_{random_suffix}.jpg")
 
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         """
@@ -45,36 +46,37 @@ class VisualGenderExtractor(BasicGenderExtractor):
             segment.end_h, segment.end_m, segment.end_s, segment.end_ms
         )
 
-        image_bgr = VideoUtils.take_screenshot(video_path, middle_h, middle_m, middle_s,
-                                               middle_ms,
-                                               save_path=self.save_screenshot_path)  # BGR format from OpenCV
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        # grounding dino model inference for getting found boxes
-        boxes, scores, text_labels = self._use_grounding_dino_model(image_rgb, text_request="man . woman .")
+        current_screenshot_path = self._create_temp_screenshot_path(middle_h, middle_m, middle_s, middle_ms)
+        try:
+            image_bgr = VideoUtils.take_screenshot(video_path, middle_h, middle_m, middle_s,
+                                                   middle_ms,
+                                                   save_path=current_screenshot_path)  # BGR format from OpenCV
 
-        if len(boxes) > 0:
-            all_detected_objects = zip(boxes, scores, text_labels)
+            image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+            # grounding dino model inference for getting found boxes
+            boxes, scores, text_labels = self._use_grounding_dino_model(image_rgb, text_request="man . woman .")
 
-            # filter only to leave valid objects (those objects which have only one result class, as the model may
-            # give result as "man woman"
-            valid_objects = [
-                obj for obj in all_detected_objects
-                if not ("man" in obj[2] and "woman" in obj[2])
-            ]
+            if len(boxes) > 0:
+                all_detected_objects = zip(boxes, scores, text_labels)
 
-            if not valid_objects:
-                return None
+                # filter only to leave valid objects (those objects which have only one result class, as the model may
+                # give result as "man woman"
+                valid_objects = [
+                    obj for obj in all_detected_objects
+                    if not ("man" in obj[2] and "woman" in obj[2])
+                ]
 
-            best_box_tensor, best_score, best_label = max(valid_objects,
-                                                          key=lambda x: self._get_area_of_bounding_box(x[0].tolist()))
+                if not valid_objects:
+                    return None
 
-            best_box_list = best_box_tensor.tolist()
-            ImageUtils.crop_image_with_given_coordinates(self.save_screenshot_path, self.save_cropped_image_path,
-                                                         best_box_list[0], best_box_list[1], best_box_list[2],
-                                                         best_box_list[3])
+                best_box_tensor, best_score, best_label = max(valid_objects,
+                                                              key=lambda x: self._get_area_of_bounding_box(x[0].tolist()))
 
-            return {"label": best_label, "score": best_score.item()}
-        return None
+                return {"label": best_label, "score": best_score.item()}
+            return None
+        finally:
+            if os.path.exists(current_screenshot_path):
+                os.remove(current_screenshot_path)
 
     def _use_grounding_dino_model(self, image: np.ndarray, text_request: str = "a person.") -> (
             tuple)[torch.Tensor, torch.Tensor, list]:
@@ -98,11 +100,9 @@ class VisualGenderExtractor(BasicGenderExtractor):
         )
 
         result = results[0]
-        print("Grounding DINO model results:")
         pil_image = Image.fromarray(image)
         for box, score, labels in zip(result["boxes"], result["scores"], result["text_labels"]):
             box = box.tolist()
-            print(f"Detected {labels} with confidence {round(score.item(), 3)} at location {box}")
             # draw bounding box for debugging
             #ImageUtils.draw_bounding_box_on_the_image(box, Image.fromarray(image))
             #ImageUtils.draw_bounding_box_on_the_image_in_place(box, pil_image)
@@ -110,40 +110,6 @@ class VisualGenderExtractor(BasicGenderExtractor):
         #pil_image.save(self.save_screenshot_with_points)  # for debugging
 
         return result["boxes"], result["scores"], result["text_labels"]
-
-    def _use_siglip_model(self, image_path: str) -> tuple[str, float]:
-        """
-        To use Siglip in order to determine whether there is a woman or a mam on the image.
-
-        Args:
-            image_path (str): Path to the given image.
-
-        Returns:
-            tuple[str, float]: To use Siglip model to determine whether there is a woman or a man in the image.
-            A tuple, where the string is either 'woman' or 'man', with the probability (float) of this
-            gender being in the image. The returned name of gender has a higher probability of being in the image
-            than the other.
-        """
-        image = Image.open(image_path)
-        texts = ["A photo of a woman", "A photo of a man"]
-        inputs = self.siglip_processor(text=texts, images=image, padding="max_length", return_tensors="pt")
-
-        with torch.no_grad():
-            outputs = self.siglip_model(**inputs)
-
-        logits_per_image = outputs.logits_per_image
-        probs = torch.sigmoid(logits_per_image)  # these are the probabilities
-
-        print(f"{probs[0][0]}% that image 0 is '{texts[0]}'")
-        print(f"{probs[0][1]}% that image 0 is '{texts[1]}'")
-
-        woman_prob = probs[0][0].item()
-        man_prob = probs[0][1].item()
-
-        if woman_prob >= man_prob:
-            return "woman", woman_prob
-        else:
-            return "man", man_prob
 
     @staticmethod
     def _get_area_of_bounding_box(bbox: list) -> float:
