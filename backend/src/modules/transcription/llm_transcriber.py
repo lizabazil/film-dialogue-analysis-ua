@@ -1,3 +1,5 @@
+import re
+
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
@@ -12,6 +14,7 @@ import secrets
 import string
 from datetime import datetime
 from pathlib import Path
+from collections import Counter
 
 
 def get_last_n_lines_from_response(response: str, last_n_lines: int = 30) -> str:
@@ -69,6 +72,7 @@ class LLMTranscriber:
     """
 
     TimeInterval = tuple[float, float]  # type alias for simplifying structure
+    RESPONSE_STRUCTURE_PATTERN = re.compile(r"\[\d{2,}:\d{2,}.*?\]\s+SPEAKER_\w+\s*(\([FM]\))?:\s*.*")
 
     def __init__(self, config: dict):
         self.model_name = config["llm_transcriber"]["model_name"]
@@ -92,7 +96,7 @@ class LLMTranscriber:
             'Вимоги до виводу:\n'
             '1. Формат виводу: Простий текст, кожен рядок — одна репліка.\n'
             '   Формат: [HH:MM:SS.ms - HH:MM:SS.ms] SPEAKER_XX (GENDER): Текст репліки.\n'
-            '   Де GENDER — це: M (чоловік), F (жінка) або U (невідомо/неочевидно).\n'
+            '   Де GENDER — це: M (чоловік) або F (жінка)\n'
             '   ВАЖЛИВО: Використовуй ВІДНОСНИЙ час аудіофайлу (початок = 00:00:00.000).\n'
             '2. Ідентифікація спікерів та статі: Використовуй суворі мітки SPEAKER_01, SPEAKER_02. '
             'Стать визначай на основі акустичних характеристик голосу та контексту мовлення.\n'
@@ -262,6 +266,11 @@ class LLMTranscriber:
                 print(f"Got response from llm for chunk {i}") if response is not None else print(f"Didn't get "
                                                                                                  f"response from llm "
                                                                                                  f"for chunk {i}")
+                # check for hallucinations
+                is_last_chunk = (i == len(chunks) - 1)
+                if self._is_hallucinating(response, chunk_num=i, is_last_chunk=is_last_chunk):
+                    response = None
+
             with open(self._txt_file_path_for_transcript, "a") as f:
                 f.write(f"-- CHUNK {i} --\n")
                 f.write(response)
@@ -306,3 +315,78 @@ class LLMTranscriber:
             None
         """
         self._txt_file_path_for_transcript = value
+
+    def _is_hallucinating(self, response: str, threshold: float = 0.4, chunk_num: int = None,
+                          is_last_chunk: bool = False) -> bool:
+        if not response:
+            return not is_last_chunk
+
+        lines = [l for l in response.split("\n") if l.strip()]
+
+        meta_keywords = ["музика", "music", "тиша", "no_speech", "background", "noise", "стогін", "вигук"]
+        if len(lines) <= 2:  # max 2 lines in the whole chunk
+            response_lower = response.lower()
+            if any(key in response_lower for key in meta_keywords):  # basically, no speech in the whole chunk
+                print(f"Accepted meta-response (likely without replicas) in chunk {chunk_num}: {response}")
+                return False
+
+        if len(lines) <= 10:
+            if is_last_chunk:
+                return False
+
+        # 1. structure check
+        for line in lines:
+            if not re.match(self.RESPONSE_STRUCTURE_PATTERN, line):
+                print(f"Hallucinating (structure) in chunk {chunk_num}: {line}")
+                return True
+
+        current_threshold = 0.85 if is_last_chunk else threshold
+        min_unique_ratio = 0.05 if is_last_chunk else 0.25
+        max_consecutive = 50 if is_last_chunk else 10
+
+        speech_content = [line.rsplit(":", 1)[-1].strip().lower() for line in lines]
+        if not speech_content:
+            return False
+
+        # 2. check for cycle pairs
+        if len(speech_content) >= 4:
+            # create pairs like this: [(L1, L2), (L2, L3), (L3, L4)...]
+            line_pairs = list(zip(speech_content, speech_content[1:]))
+            pair_counts = Counter(line_pairs)
+
+            if pair_counts:
+                most_common_pair, pair_count = pair_counts.most_common(1)[0]
+                pair_ratio = (pair_count * 2) / len(speech_content)
+
+                pair_limit = 0.95 if is_last_chunk else 0.7
+                if pair_ratio > pair_limit and pair_count >= 4:
+                    print(f"Hallucinating (cycle loop) in chunk {chunk_num}: {most_common_pair}")
+                    return True
+
+        # 3. check if enough uniqueness in the whole chunk
+        if len(speech_content) > 6:
+            unique_ratio = len(set(speech_content)) / len(speech_content)
+            if unique_ratio < min_unique_ratio:
+                print(f"Hallucinating (low uniqueness) in chunk {chunk_num}: ratio {unique_ratio}")
+                return True
+
+        # 4. check consecutive repetitions (A-A-A-A)
+        consecutive_count = 1
+        for i in range(1, len(speech_content)):
+            if speech_content[i] == speech_content[i - 1] and len(speech_content[i]) > 0:
+                consecutive_count += 1
+                if consecutive_count >= max_consecutive:  # at least 10 the same replicas
+                    print(f"Hallucinating (consecutive) in chunk {chunk_num}: '{speech_content[i]}'")
+                    return True
+            else:
+                consecutive_count = 1
+
+        # 5. whether any replica appears very often in the whole chunk (this may indicate that the model has
+        # hallucinated)
+        line_counts = Counter(speech_content)
+        most_common_line, count = line_counts.most_common(1)[0]
+        if count / len(speech_content) > current_threshold:
+            print(f"Hallucinating (global repetition) in chunk {chunk_num}: {most_common_line}")
+            return True
+
+        return False
