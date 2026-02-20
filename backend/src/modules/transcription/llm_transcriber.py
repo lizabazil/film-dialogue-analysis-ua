@@ -72,7 +72,8 @@ class LLMTranscriber:
     """
 
     TimeInterval = tuple[float, float]  # type alias for simplifying structure
-    RESPONSE_STRUCTURE_PATTERN = re.compile(r"\[\d{2,}:\d{2,}.*?\]\s+SPEAKER_\w+\s*(\([FM]\))?:\s*.*")
+    RESPONSE_STRUCTURE_PATTERN_WITH_GENDER = re.compile(r"\[\d{2}:\d{2}(:\d{2})?[.:]\d{3}\s-\s\d{2}:\d{2}(?::\d{2})?[.:]\d{3}\]\s+SPEAKER_\w+\s*(\([FM]\)):\s*.*")
+    RESPONSE_STRUCTURE_PATTERN_WITHOUT_GENDER = re.compile(r"\[\d{2}:\d{2}(:\d{2})?[.:]\d{3}\s-\s\d{2}:\d{2}(?::\d{2})?[.:]\d{3}\]\s+SPEAKER_\w+\s*:\s*.*")
 
     def __init__(self, config: dict):
         self.model_name = config["llm_transcriber"]["model_name"]
@@ -336,7 +337,7 @@ class LLMTranscriber:
 
         # 1. structure check
         for line in lines:
-            if not re.match(self.RESPONSE_STRUCTURE_PATTERN, line):
+            if not re.match(self.RESPONSE_STRUCTURE_PATTERN_WITH_GENDER, line):
                 print(f"Hallucinating (structure) in chunk {chunk_num}: {line}")
                 return True
 
