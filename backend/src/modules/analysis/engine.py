@@ -1,14 +1,18 @@
 from schemas import MovieAnalysisReport
+from src.utils.segment import Segment
 
 
 class AnalysisEngine:
-    def __int__(self, jsonl_path: str):
-        self.jsonl_paht = jsonl_path
-        self.segments = self._load_data()
-
-    def _load_data(self):
-        # load data from jsonl to the segments
+    def __int__(self):
         pass
 
-    def run_full_analysis(self) -> MovieAnalysisReport:
+    def run_full_analysis(self, segments: list[Segment]) -> MovieAnalysisReport:
+        """
+
+        Args:
+            segments: Segments, where fields 'nlp_data' and 'gender' are already filled.
+
+        Returns:
+
+        """
         pass
