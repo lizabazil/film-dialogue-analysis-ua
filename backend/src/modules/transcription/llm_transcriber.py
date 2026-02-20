@@ -72,8 +72,8 @@ class LLMTranscriber:
     """
 
     TimeInterval = tuple[float, float]  # type alias for simplifying structure
-    RESPONSE_STRUCTURE_PATTERN_WITH_GENDER = re.compile(r"\[\d{2}:\d{2}(:\d{2})?[.:]\d{3}\s-\s\d{2}:\d{2}(?::\d{2})?[.:]\d{3}\]\s+SPEAKER_\w+\s*(\([FM]\)):\s*.*")
-    RESPONSE_STRUCTURE_PATTERN_WITHOUT_GENDER = re.compile(r"\[\d{2}:\d{2}(:\d{2})?[.:]\d{3}\s-\s\d{2}:\d{2}(?::\d{2})?[.:]\d{3}\]\s+SPEAKER_\w+\s*:\s*.*")
+    RESPONSE_STRUCTURE_PATTERN_WITH_GENDER = re.compile(r"\[\d{1,2}:\d{1,2}(:\d{1,2})?[.:]\d{1,3}\s-\s\d{1,2}:\d{1,2}(?::\d{1,2})?[.:]\d{1,3}\]\s+SPEAKER_\w+\s*(\([FM]\)):\s*.*")
+    RESPONSE_STRUCTURE_PATTERN_WITHOUT_GENDER = re.compile(r"\[\d{1,2}:\d{2}(:\d{2})?[.:]\d{1,3}\s-\s\d{1,2}:\d{2}(?::\d{2})?[.:]\d{1,3}\]\s+SPEAKER_\w+\s*:\s*.*")
 
     def __init__(self, config: dict):
         self.model_name = config["llm_transcriber"]["model_name"]
@@ -103,7 +103,10 @@ class LLMTranscriber:
             'Стать визначай на основі акустичних характеристик голосу та контексту мовлення.\n'
             '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу.\n'
             '4. Точність часу: Таймкоди мають включати мілісекунди (ms).\n'
-            '5. Переклад: Цільова мова — УКРАЇНСЬКА. Перекладай літературно, без оригіналу.'
+            '5. Переклад: Цільова мова — УКРАЇНСЬКА. Перекладай літературно, без оригіналу.\n'
+            '6. ЗАБОРОНА ГАЛЮЦИНАЦІЙ: Категорично заборонено додумувати слова з фонового шуму.'
+            'Не інтерпретуй подих, кроки чи вітер як вигуки.'
+            'Якщо людське мовлення відсутнє або нерозбірливе (шум, дихання) — НЕ ГЕНЕРУЙ НІЧОГО. Порожній результат для тиші є правильним.\n'
         )
 
         self._txt_file_path_for_transcript = None
@@ -212,7 +215,8 @@ class LLMTranscriber:
                         uploaded_file,
                         self.requirements_to_response,
                     ],
-                    safety_settings=safety_settings
+                    safety_settings=safety_settings,
+                    generation_config={"temperature": 0.0, "top_p": 0.1}
                 )
                 text_response = response.text
                 self.prev_response = text_response
@@ -269,7 +273,8 @@ class LLMTranscriber:
                                                                                                  f"for chunk {i}")
                 # check for hallucinations
                 is_last_chunk = (i == len(chunks) - 1)
-                if self._is_hallucinating(response, chunk_num=i, is_last_chunk=is_last_chunk):
+                is_hallucinating, response = self._is_hallucinating(response, chunk_num=i, is_last_chunk=is_last_chunk)
+                if is_hallucinating:
                     response = None
 
             with open(self._txt_file_path_for_transcript, "a") as f:
@@ -318,36 +323,50 @@ class LLMTranscriber:
         self._txt_file_path_for_transcript = value
 
     def _is_hallucinating(self, response: str, threshold: float = 0.4, chunk_num: int = None,
-                          is_last_chunk: bool = False) -> bool:
-        if not response:
-            return not is_last_chunk
+                          is_last_chunk: bool = False) -> tuple[bool, str]:
+        default_no_speech_response = "[00:00:00.0 - 00:01:00.000] SPEAKER_100 (U): [no sound]"
+        if not response or not response.strip():
+            print(f"Chunk {chunk_num} is completely silent.")
+            return False, default_no_speech_response
 
         lines = [l for l in response.split("\n") if l.strip()]
 
-        meta_keywords = ["музика", "music", "тиша", "no_speech", "background", "noise", "стогін", "вигук"]
+        meta_keywords = ["музика", "music", "тиша", "no speech", "background", "noise", "стогін", "вигук"]
         if len(lines) <= 2:  # max 2 lines in the whole chunk
             response_lower = response.lower()
             if any(key in response_lower for key in meta_keywords):  # basically, no speech in the whole chunk
                 print(f"Accepted meta-response (likely without replicas) in chunk {chunk_num}: {response}")
-                return False
-
-        if len(lines) <= 10:
-            if is_last_chunk:
-                return False
+                return False, default_no_speech_response
 
         # 1. structure check
         for line in lines:
             if not re.match(self.RESPONSE_STRUCTURE_PATTERN_WITH_GENDER, line):
                 print(f"Hallucinating (structure) in chunk {chunk_num}: {line}")
-                return True
+                return True, response
+
+        speech_content = [line.rsplit(":", 1)[-1].strip().lower() for line in lines]
+        if not speech_content:
+            return False, response
+        if len(speech_content) < 3:  # less than three replicas in the whole chunk
+            return False, response
+
+        # 6. internal cycle loop
+        for line_text in speech_content:
+            if len(line_text) > 50:  # pretty long speech text
+                char_uniqueness = len(set(line_text)) / len(line_text)
+                if char_uniqueness < 0.1:
+                    print(f"Hallucinating (internal char loop in speech text in chunk {chunk_num}: {line_text}")
+                    return True, response
+
+                # check for extremely long words without spaces
+                longest_word_len = max((len(w) for w in line_text.split()), default=0)
+                if longest_word_len > 50:  # word with more than 50 symbols is considered a hallucination
+                    print(f"Hallucinating (infinite loop) in chunk: {chunk_num}: {line_text}")
+                    return True, response
 
         current_threshold = 0.85 if is_last_chunk else threshold
         min_unique_ratio = 0.05 if is_last_chunk else 0.25
         max_consecutive = 50 if is_last_chunk else 10
-
-        speech_content = [line.rsplit(":", 1)[-1].strip().lower() for line in lines]
-        if not speech_content:
-            return False
 
         # 2. check for cycle pairs
         if len(speech_content) >= 4:
@@ -362,14 +381,14 @@ class LLMTranscriber:
                 pair_limit = 0.95 if is_last_chunk else 0.7
                 if pair_ratio > pair_limit and pair_count >= 4:
                     print(f"Hallucinating (cycle loop) in chunk {chunk_num}: {most_common_pair}")
-                    return True
+                    return True, response
 
         # 3. check if enough uniqueness in the whole chunk
         if len(speech_content) > 6:
             unique_ratio = len(set(speech_content)) / len(speech_content)
             if unique_ratio < min_unique_ratio:
                 print(f"Hallucinating (low uniqueness) in chunk {chunk_num}: ratio {unique_ratio}")
-                return True
+                return True, response
 
         # 4. check consecutive repetitions (A-A-A-A)
         consecutive_count = 1
@@ -378,7 +397,7 @@ class LLMTranscriber:
                 consecutive_count += 1
                 if consecutive_count >= max_consecutive:  # at least 10 the same replicas
                     print(f"Hallucinating (consecutive) in chunk {chunk_num}: '{speech_content[i]}'")
-                    return True
+                    return True, response
             else:
                 consecutive_count = 1
 
@@ -388,6 +407,6 @@ class LLMTranscriber:
         most_common_line, count = line_counts.most_common(1)[0]
         if count / len(speech_content) > current_threshold:
             print(f"Hallucinating (global repetition) in chunk {chunk_num}: {most_common_line}")
-            return True
+            return True, response
 
-        return False
+        return False, response
