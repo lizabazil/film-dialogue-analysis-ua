@@ -2,7 +2,6 @@
 from src.modules.speaker_enrichment.basic_gender_extractor import BasicGenderExtractor
 import torch
 from transformers import (AutoProcessor, AutoModelForZeroShotObjectDetection)
-from PIL import Image
 import cv2
 import numpy as np
 from src.utils.time_utils import TimeUtils
@@ -95,20 +94,10 @@ class VisualGenderExtractor(BasicGenderExtractor):
             inputs.input_ids,
             threshold=0.3,
             text_threshold=0.3,
-            #target_sizes=[image.size[::-1]]
             target_sizes=[(height, width)]
         )
 
         result = results[0]
-        pil_image = Image.fromarray(image)
-        for box, score, labels in zip(result["boxes"], result["scores"], result["text_labels"]):
-            box = box.tolist()
-            # draw bounding box for debugging
-            #ImageUtils.draw_bounding_box_on_the_image(box, Image.fromarray(image))
-            #ImageUtils.draw_bounding_box_on_the_image_in_place(box, pil_image)
-        # save final image with all the boxes
-        #pil_image.save(self.save_screenshot_with_points)  # for debugging
-
         return result["boxes"], result["scores"], result["text_labels"]
 
     @staticmethod
