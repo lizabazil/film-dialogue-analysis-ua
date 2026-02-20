@@ -69,7 +69,11 @@ class VideoPipeline:
         # save checkpoint: save raw (not cleaned) transcript into txt file
         self.transcript_io_manager.save(segments_after_whisper, paths.get("transcript"))
         # and then:
-        self._process_text_pipeline(segments_after_whisper, video_path, paths.get("udpipe"))
+        nlp_and_gender_annotated_segments = self._process_text_pipeline(segments_after_whisper, video_path,
+                                                                        paths.get("udpipe"))
+
+        # gender_annotated_segments will be given to the analysis module
+        # TODO: add calling analysis module
 
     def _generate_transcript_from_annotation(self, annotation, full_audio_path) -> list[Segment]:
         full_audio_numpy, sr = AudioFileUtils.load_audio_as_mono_numpy(full_audio_path)
@@ -106,11 +110,28 @@ class VideoPipeline:
         if not os.path.exists(transcript_path):
             raise FileNotFoundError(f"Transcript file {transcript_path} can not be found.")
 
-        parsed_segments_from_transcript = self.transcript_io_manager.parse(transcript_path)
-        # and then
-        self._process_text_pipeline(parsed_segments_from_transcript, video_path, udpipe_cache_file_path)
+        parsed_segments_from_transcript, with_gender_notes = self.transcript_io_manager.parse(transcript_path)
+        # and then add genders in case it is not there yet
+        nlp_data_and_gender_annotated_segments = (
+            self._process_text_pipeline(parsed_segments_from_transcript, video_path, udpipe_cache_file_path,
+                                        with_genders_already=with_gender_notes))
 
-    def _process_text_pipeline(self, segments: list, video_path: str, udpipe_file_path: str | None):
+        # gender_annotated_segments will be given to the analysis module
+        # TODO: add calling analysis module
+
+    def _process_text_pipeline(self, segments: list, video_path: str, udpipe_file_path: str | None,
+                               with_genders_already: bool = False) -> list[Segment]:
+        """
+
+        Args:
+            segments: Segments without 'nlp_data' and 'gender' fields.
+            video_path: Path to the original video.
+            udpipe_file_path: Path to the UDPipe JSON file. If such file does not exist, the UDPipe service is called.
+            Otherwise, the cache file is used.
+
+        Returns:
+            list[Segment]: Final segments with gender notes and nlp data.
+        """
         paths = self._generate_paths(video_path)
         # udpipe file_path may not exist. if it exists, udpipe won't run its pipeline again
         # if it does not exist, then udpipe will run its pipeline and save its result to the given file
@@ -125,14 +146,16 @@ class VideoPipeline:
 
         segments_with_linguistic_features = self.nlp_udpipe_parser.add_linguistic_features(normalized_segments,
                                                                                            udpipe_file_path)
-        # 4. gender enricher and saving to the json lines file
 
-        print('Starting annotating segments...')
-        gender_annotated_segments = self.gender_enricher.annotate_segments(video_path,
-                                                                           segments_with_linguistic_features,
-                                                                           paths.get("final_jsonl"))
-        # gender_annotated_segments will be given to the analysis module
-        # TODO: add calling analysis module
+        # 4. gender enricher and saving to the json lines file
+        if not with_genders_already:
+            print('Starting annotating segments...')
+            gender_annotated_segments = self.gender_enricher.annotate_segments(video_path,
+                                                                               segments_with_linguistic_features,
+                                                                               paths.get("final_jsonl"))
+            return gender_annotated_segments
+        else:
+            return segments_with_linguistic_features
 
     def _generate_paths(self, video_source_path: str) -> dict:
         """

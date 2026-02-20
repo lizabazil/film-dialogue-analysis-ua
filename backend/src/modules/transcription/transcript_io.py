@@ -1,4 +1,6 @@
+import json
 import re
+import os
 
 from src.utils.segment import Segment
 from src.utils.time_utils import TimeUtils
@@ -11,7 +13,34 @@ class TranscriptIO:
     SPEAKER_<number> | <hh:mm:ss.mmm> --> <hh:mm:ss.mmm> | <text>
     """
 
-    def parse(self, txt_file_path: str) -> list[Segment]:
+    def parse(self, file_path: str) -> tuple[list[Segment], bool]:
+        """
+        Parses file based on its extension. In case with JSONL file, there already will be genders. Otherwise, there
+        won't be genders.
+        Args:
+            file_path: Path to the file with transcript.
+
+        Returns:
+            tuple[list[Segment], bool]: True if there is already genders, False otherwise.
+        """
+        extension = os.path.splitext(file_path)[1]
+        if extension == ".jsonl":
+            return self._parse_jsonl(file_path), True
+        elif extension == '.txt':
+            return self._parse_txt(file_path), False
+        else:
+            raise ValueError(f"Unknown file format with extension: {extension}")
+
+    def _parse_jsonl(self, jsonl_file_path) -> [list[Segment]]:
+        segments = []
+        with open(jsonl_file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                data = json.loads(line)
+                segments.append(Segment(*data))
+
+        return segments
+
+    def _parse_txt(self, txt_file_path: str) -> list[Segment]:
         """
         """
         segments = []
