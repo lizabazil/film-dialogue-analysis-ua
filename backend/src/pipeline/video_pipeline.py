@@ -13,6 +13,7 @@ from src.utils.time_utils import TimeUtils
 import yaml
 from pathlib import Path
 from src.utils.segment import Segment
+from src.modules.analysis.engine import AnalysisEngine
 
 
 class VideoPipeline:
@@ -30,8 +31,9 @@ class VideoPipeline:
         self.diarization_io = DiarizationIO()
         self.cleaner = WhisperTranscriptCleaner()
         self.normalizer = SegmentNormalizer()
-        self.nlp_udpipe_parser = NLPUDPipeParser()
-        self.gender_enricher = GenderEnricher(self.config)
+        self._nlp_udpipe_parser = None
+        self._gender_enricher = None
+        self.analysis_engine = AnalysisEngine()
         print("VideoPipeline init done.")
 
     @property
@@ -47,6 +49,18 @@ class VideoPipeline:
             self._transcriber = WhisperTranscriber(self.config)
             print("Whisper transcriber loaded.")
         return self._transcriber
+
+    @property
+    def gender_enricher(self):
+        if self._gender_enricher is None:
+            self._gender_enricher = GenderEnricher(self.config)
+        return self._gender_enricher
+
+    @property
+    def nlp_udpipe_parser(self):
+        if self._nlp_udpipe_parser is None:
+            self._nlp_udpipe_parser = NLPUDPipeParser()
+        return self._nlp_udpipe_parser
 
     @staticmethod
     def load_config(path: str) -> dict:
@@ -117,10 +131,11 @@ class VideoPipeline:
                                         with_genders_already=with_gender_notes))
 
         # gender_annotated_segments will be given to the analysis module
-        # TODO: add calling analysis module
+        analysis_report = self.analysis_engine.run_full_analysis(nlp_data_and_gender_annotated_segments, video_path)
+        return analysis_report
 
     def _process_text_pipeline(self, segments: list, video_path: str, udpipe_file_path: str | None,
-                               with_genders_already: bool = False) -> list[Segment]:
+                               with_genders_already: bool = False, from_whisper: bool = False) -> list[Segment]:
         """
 
         Args:
@@ -137,9 +152,11 @@ class VideoPipeline:
         # if it does not exist, then udpipe will run its pipeline and save its result to the given file
 
         # 1. cleaner
-        cleaned_segments = self.cleaner.clean(segments)
+        if from_whisper:
+            segments = self.cleaner.clean(segments)
+
         # 2. normalizer
-        normalized_segments = self.normalizer.normalize(cleaned_segments)
+        normalized_segments = self.normalizer.normalize(segments)
         # 3. NLP udpipe parser
         if udpipe_file_path is None or not os.path.exists(udpipe_file_path):
             udpipe_file_path = paths.get("udpipe")
