@@ -4,6 +4,9 @@ from pydantic import BaseModel
 class GenderBalance(BaseModel):
     woman_time_minutes: float
     man_time_minutes: float
+
+    woman_replicas: int
+    man_replicas: int
     #man_time_ms: int
     #woman_time_ms: int
     #man_word_count: int
