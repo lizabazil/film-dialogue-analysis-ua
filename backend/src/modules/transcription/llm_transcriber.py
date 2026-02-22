@@ -100,17 +100,19 @@ class LLMTranscriber:
             '   Де GENDER — це: M (чоловік) або F (жінка)\n'
             '   ВАЖЛИВО: Використовуй ВІДНОСНИЙ час аудіофайлу (початок = 00:00:00.000).\n'
             '2. Ідентифікація спікерів та статі: Використовуй суворі мітки SPEAKER_01, SPEAKER_02. '
-            'Стать визначай на основі акустичних характеристик голосу та контексту мовлення.\n'
-            '3. Фільтрація: Ігноруй музику, звукові ефекти, тишу.\n'
-            '4. Точність часу: Таймкоди мають включати мілісекунди (ms).\n'
-            '5. Переклад: Цільова мова — УКРАЇНСЬКА. Перекладай літературно, без оригіналу.\n'
-            '6. ЗАБОРОНА ГАЛЮЦИНАЦІЙ: Категорично заборонено додумувати слова з фонового шуму.'
-            'Не інтерпретуй подих, кроки чи вітер як вигуки.'
-            'Якщо людське мовлення відсутнє або нерозбірливе (шум, дихання) — НЕ ГЕНЕРУЙ НІЧОГО. Порожній результат для тиші є правильним.\n'
+            'Стать визначай за голосом.\n'
+            '3. Точність часу: Таймкоди мають включати мілісекунди (ms).\n'
+            '4. Переклад: Цільова мова — УКРАЇНСЬКА. Перекладай літературно, без оригіналу.\n'
+            '5. ЗАБОРОНА ГАЛЮЦИНАЦІЙ: Категорично заборонено додумувати слова з фонового шуму.'
+            'Не інтерпретуй подих, кроки чи вітер як вигуки.\n'
+            '6. Фільтрація та Тиша: > * НЕ ТРАНСКРИБУЙ музику, шум, подих або тишу як окремі репліки всередині діалогу.'
+            'ЯКЩО В УСЬОМУ ФАЙЛІ ВІДСУТНЄ МОВЛЕННЯ: Видай лише один рядок:'
+            '[00:00.000 - 07:59.999] SPEAKER_100 (U): [no speech]'
         )
 
         self._txt_file_path_for_transcript = None
-        self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 8)  # the whole audio file will be split in chunks each being 8 minutes
+        # the whole audio file will be split in chunks each being 8 minutes
+        self.chunk_length_in_min = config.get("llm_transcriber", {}).get("chunk_length_in_min", 8)
         self.overlap_in_min = config.get("llm_transcriber", {}).get("overlap_in_min", 1)
 
         # here will be saved the full audio file of the given video
@@ -210,38 +212,26 @@ class LLMTranscriber:
                 if uploaded_file.state.name == "FAILED":
                     raise ValueError("File upload failed on Google side...")
 
-                response = self.model.generate_content(
-                    [
-                        uploaded_file,
-                        self.requirements_to_response,
-                    ],
-                    safety_settings=safety_settings,
-                    generation_config={"temperature": 0.0, "top_p": 0.1}
-                )
+                response = self.model.generate_content([uploaded_file, self.requirements_to_response],
+                                                       safety_settings=safety_settings
+                                                       )
                 text_response = response.text
                 self.prev_response = text_response
-
-                try:
-                    uploaded_file.delete()
-                except:
-                    pass
-
+                self._safe_delete_file(uploaded_file)
                 return text_response
 
             except exceptions.ResourceExhausted as e:
                 print(f"Resource exhausted: {e}.\nWaiting 60 seconds in case this is RPM limit...")
                 time.sleep(60)
                 retries += 1
-
             except Exception as e:
                 print(f"Exception while getting response: {e}")
-                return None
+                retries += 1
+                time.sleep(2)
 
         # probably reached the daily limit
         print("Probably max daily retries reached. Checking next API key...")
-        try:
-            if uploaded_file: uploaded_file.delete()
-        except: pass
+        self._safe_delete_file(uploaded_file)
 
         if self.next_key_index < len(self.names_of_api_keys):
             self._take_next_key()
@@ -249,6 +239,13 @@ class LLMTranscriber:
 
         print("Unable to call API...")
         return None
+
+    def _safe_delete_file(self, file_object):
+        try:
+            if file_object:
+                file_object.delete()
+        except Exception as e:
+            print(f"Cannot delete the file: {e}")
 
     def _send_chunks_to_llm(self, chunks: list[TimeInterval]) -> None:
         """
@@ -268,6 +265,11 @@ class LLMTranscriber:
             # get response until we get it
             while response is None:
                 response = self._send_safe_request(self.temp_path_to_cut_audio_file)
+
+                if response is None:  # in case with exception, the model returns None
+                    print(f"Error for chunk {i}. Trying again.")
+                    continue
+
                 print(f"Got response from llm for chunk {i}") if response is not None else print(f"Didn't get "
                                                                                                  f"response from llm "
                                                                                                  f"for chunk {i}")
@@ -324,14 +326,13 @@ class LLMTranscriber:
 
     def _is_hallucinating(self, response: str, threshold: float = 0.4, chunk_num: int = None,
                           is_last_chunk: bool = False) -> tuple[bool, str]:
-        default_no_speech_response = "[00:00:00.0 - 00:01:00.000] SPEAKER_100 (U): [no sound]"
+        default_no_speech_response = "[00:00:00.000 - 00:01:00.000] SPEAKER_100 (U): [no sound]"
         if not response or not response.strip():
-            print(f"Chunk {chunk_num} is completely silent.")
-            return False, default_no_speech_response
+            return True, response
 
         lines = [l for l in response.split("\n") if l.strip()]
 
-        meta_keywords = ["музика", "music", "тиша", "no speech", "background", "noise", "стогін", "вигук"]
+        meta_keywords = ["музика", "music", "тиша", "no speech", "no_speech", "background", "noise", "стогін", "вигук"]
         if len(lines) <= 2:  # max 2 lines in the whole chunk
             response_lower = response.lower()
             if any(key in response_lower for key in meta_keywords):  # basically, no speech in the whole chunk
@@ -343,6 +344,8 @@ class LLMTranscriber:
             if not re.match(self.RESPONSE_STRUCTURE_PATTERN_WITH_GENDER, line):
                 print(f"Hallucinating (structure) in chunk {chunk_num}: {line}")
                 return True, response
+            if not self._is_timecode_valid(line):
+                print(f"Hallucinating (timecodes are incorrect) in chunk {chunk_num}: {line}")
 
         speech_content = [line.rsplit(":", 1)[-1].strip().lower() for line in lines]
         if not speech_content:
@@ -410,3 +413,32 @@ class LLMTranscriber:
             return True, response
 
         return False, response
+
+    def _is_timecode_valid(self, line: str) -> bool:
+        time_match = re.search(r"\[([\d:.]+) - ([\d:.]+)\]", line)
+
+        if not time_match:
+            return False  # the line is in the wrong format
+
+        start_str, end_str = time_match.groups()
+
+        def timecode_to_ms(timecode_str: str) -> int:
+            timecode_str = timecode_str.replace('.', ':')
+            parts = list(map(int, timecode_str.split(':')))
+
+            parts = parts[::-1]
+
+            ms = parts[0]
+            seconds = parts[1] if len(parts) > 1 else 0
+            minutes = parts[2] if len(parts) > 2 else 0
+            hour = parts[3] if len(parts) > 3 else 0
+
+            return ms + (seconds * 1000) + (minutes * 60000) + (hour * 3600000)
+
+        try:
+            start_ms = timecode_to_ms(start_str)
+            end_ms = timecode_to_ms(end_str)
+
+            return end_ms >= start_ms
+        except Exception:
+            return False

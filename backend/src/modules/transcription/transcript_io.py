@@ -36,7 +36,17 @@ class TranscriptIO:
         with open(jsonl_file_path, "r", encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line)
-                segments.append(Segment(*data))
+                segments.append(Segment(speaker_id=data["speaker_id"],
+                                        start_h=data["start_h"],
+                                        start_m=data["start_m"],
+                                        start_s=data["start_s"],
+                                        start_ms=data["start_ms"],
+                                        end_h=data["end_h"],
+                                        end_m=data["end_m"],
+                                        end_s=data["end_s"],
+                                        end_ms=data["end_ms"],
+                                        speech=data["speech"],
+                                        gender=data["gender"]))
 
         return segments
 
