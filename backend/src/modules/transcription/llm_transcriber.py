@@ -346,6 +346,7 @@ class LLMTranscriber:
                 return True, response
             if not self._is_timecode_valid(line):
                 print(f"Hallucinating (timecodes are incorrect) in chunk {chunk_num}: {line}")
+                return True, response
 
         speech_content = [line.rsplit(":", 1)[-1].strip().lower() for line in lines]
         if not speech_content:
