@@ -12,18 +12,18 @@ export function StatsDashboard({ data }) {
 
   const womanMins = stats?.woman_time_minutes || 0;
   const manMins = stats?.man_time_minutes || 0;
-  const womanReps = stats?.woman_replicas || 0;
-  const manReps = stats?.man_replicas || 0;
-  const totalReps = womanReps + manReps;
-  const totalDuration = metadata?.duration_minutes || 1;
+  const womanReplicas = stats?.woman_replicas || 0;
+  const manReplicas = stats?.man_replicas || 0;
+  const totalReplicas = womanReplicas + manReplicas;
+  const totalDurationMinutes = metadata?.duration_minutes || 1;
 
-  const womanPercent = Math.round((womanMins / totalDuration) * 100);
-  const manPercent = Math.round((manMins / totalDuration) * 100);
-  const silenceMins = Math.max(0, totalDuration - womanMins - manMins);
-  const silencePercent = Math.round((silenceMins / totalDuration) * 100);
+  const womanPercent = Math.round((womanMins / totalDurationMinutes) * 100);
+  const manPercent = Math.round((manMins / totalDurationMinutes) * 100);
+  const silenceMins = Math.max(0, totalDurationMinutes - womanMins - manMins);
+  const silencePercent = Math.round((silenceMins / totalDurationMinutes) * 100);
 
-  const manRepPercent = totalReps > 0 ? Math.round((manReps / totalReps) * 100) : 0;
-  const womanRepPercent = totalReps > 0 ? Math.round((womanReps / totalReps) * 100) : 0;
+  const manRepPercent = totalReplicas > 0 ? Math.round((manReplicas / totalReplicas) * 100) : 0;
+  const womanRepPercent = totalReplicas > 0 ? Math.round((womanReplicas / totalReplicas) * 100) : 0;
 
   const getBubbleSize = (percent) => {
     const MIN_SIZE = 100;
@@ -40,7 +40,7 @@ export function StatsDashboard({ data }) {
   };
 
   return (
-    <Box p="md" bg="#f8f9fa" minHeight="100vh">
+    <Box p="md" bg="#f8f9fa" minh="100vh">
       <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" mb="xl">
         <Stack gap="md">
           <Stack gap={2} mb="xs">
@@ -113,16 +113,16 @@ export function StatsDashboard({ data }) {
                     }
                   />
                   <Stack gap="xs">
-                    <DonutLegendItem color={colors.manDonut} label="Чоловіки" value={manReps} percent={manRepPercent} />
-                    <DonutLegendItem color={colors.womanDonut} label="Жінки" value={womanReps} percent={womanRepPercent} />
+                    <DonutLegendItem color={colors.manDonut} label="Чоловіки" value={manReplicas} percent={manRepPercent} />
+                    <DonutLegendItem color={colors.womanDonut} label="Жінки" value={womanReplicas} percent={womanRepPercent} />
                     <Divider my="xs" />
-                    <Text size="15px" c="dimmed" fw={700}>Всього: {totalReps} реплік</Text>
+                    <Text size="15px" c="dimmed" fw={700}>Всього: {totalReplicas} реплік</Text>
                   </Stack>
                 </Group>
               </Center>
 
               <Paper withBorder radius="lg" p="md" bg="gray.0">
-                 <Text size="sm" fw={600} ta="center">Стать із більшої кількістю реплік: {manReps > womanReps ? "Чоловіча" : "Жіноча"}</Text>
+                 <Text size="sm" fw={600} ta="center">Стать із більшої кількістю реплік: {manReplicas > womanReplicas ? "Чоловіча" : "Жіноча"}</Text>
               </Paper>
             </Stack>
           </Paper>
