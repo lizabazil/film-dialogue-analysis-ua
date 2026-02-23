@@ -1,10 +1,10 @@
 import {
   Grid, Paper, Text, Group, rem,
-  Title, Stack, Box, ThemeIcon, SimpleGrid, Center
+  Title, Stack, Box, ThemeIcon, SimpleGrid, Center, RingProgress, Divider
 } from '@mantine/core';
 import {
   IconClock, IconDatabase, IconMessage2,
-  IconUserHeart, IconFileDescription, IconVolumeOff
+  IconUserHeart, IconFileDescription, IconVolumeOff, IconChartDonut, IconMicrophone
 } from '@tabler/icons-react';
 
 export function StatsDashboard({ data }) {
@@ -12,101 +12,144 @@ export function StatsDashboard({ data }) {
 
   const womanMins = stats?.woman_time_minutes || 0;
   const manMins = stats?.man_time_minutes || 0;
+  const womanReps = stats?.woman_replicas || 0;
+  const manReps = stats?.man_replicas || 0;
+  const totalReps = womanReps + manReps;
   const totalDuration = metadata?.duration_minutes || 1;
 
-  // percentages for each category
   const womanPercent = Math.round((womanMins / totalDuration) * 100);
   const manPercent = Math.round((manMins / totalDuration) * 100);
   const silenceMins = Math.max(0, totalDuration - womanMins - manMins);
   const silencePercent = Math.round((silenceMins / totalDuration) * 100);
 
-  const MIN_SIZE = 100;  // for min size of the circle in the box
-  const MAX_SIZE = 220;  // for max size of the circle in the box
-  const getBubbleSize = (percent) => {
-  return MIN_SIZE + (percent / 100) * (MAX_SIZE - MIN_SIZE);
-};
+  const manRepPercent = totalReps > 0 ? Math.round((manReps / totalReps) * 100) : 0;
+  const womanRepPercent = totalReps > 0 ? Math.round((womanReps / totalReps) * 100) : 0;
 
-  const manSize = getBubbleSize(manPercent);
-  const womanSize = getBubbleSize(womanPercent);
-  const silenceSize = getBubbleSize(silencePercent);
+  const getBubbleSize = (percent) => {
+    const MIN_SIZE = 100;
+    const MAX_SIZE = 180;
+    return MIN_SIZE + (percent / 100) * (MAX_SIZE - MIN_SIZE);
+  };
 
   const colors = {
     man: '#65489A',
     woman: '#B98793',
     silence: '#7FB9A3',
+    manDonut: '#ABB2FA',
+    womanDonut: '#F37D8B'
   };
 
   return (
-    <Box p="md">
-      {/* 1. metadata info */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb="30px">
-        <MetadataSmallCard
-          icon={IconFileDescription}
-          title="Файл"
-          value={metadata?.filename || 'Unknown'}
-          color="blue"
-          isTruncated
-        />
-        <MetadataSmallCard
-          icon={IconClock}
-          title="Тривалість"
-          value={metadata?.formatted_duration || '00:00:00'}
-          color="teal"
-        />
-        <MetadataSmallCard
-          icon={IconDatabase}
-          title="Розмір"
-          value={`${metadata?.file_size_gb?.toFixed(2)} GB`}
-          color="orange"
-        />
-      </SimpleGrid>
-
-      {/* 2. box with three circles (woman, man and silence) */}
-      <Paper radius="40px" p="xl" withBorder shadow="md" bg="white"
-      maw={700} mx="left" w="100%" >
-        <Stack gap="xl">
-          <Group justify="space-between" px="md">
-            <Stack gap={2}>
-              <Title order={3} fw={800} c="dark.4">Аналіз голосової активності</Title>
-              <Text size="sm" c="dimmed" fw={500}>Співвідношення голосів та фонового шуму</Text>
-            </Stack>
-          </Group>
-
-          <Center py="lg">
-            <Group gap={40} justify="center" wrap="wrap">
-
-              <BubbleIndicator
-                percent={manPercent}
-                color={colors.man}
-                label="Чоловіки"
-                size={manSize}
-              />
-
-              <BubbleIndicator
-                percent={womanPercent}
-                color={colors.woman}
-                label="Жінки"
-                size={womanSize}
-              />
-
-              <BubbleIndicator
-                percent={silencePercent}
-                color={colors.silence}
-                label="Тиша"
-                size={silenceSize}
-              />
-
-            </Group>
-          </Center>
-
-          <SimpleGrid cols={3} mt="sm">
-            <LegendDetail label="Чоловіча стать" value={`${manMins.toFixed(1)} хв`} color={colors.man} />
-            <LegendDetail label="Жіноча стать" value={`${womanMins.toFixed(1)} хв`} color={colors.woman} />
-            <LegendDetail label="Тиша" value={`${silenceMins.toFixed(1)} хв`} color={colors.silence} />
+    <Box p="md" bg="#f8f9fa" minHeight="100vh">
+      <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" mb="xl">
+        <Stack gap="md">
+          <Stack gap={2} mb="xs">
+            <Title order={3} fw={800} c="dark.4">Параметри файлу</Title>
+            <Text size="sm" c="dimmed" fw={500}>Загальна інформація про медіафайл</Text>
+          </Stack>
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <MetadataSmallCard icon={IconFileDescription} title="Файл" value={metadata?.filename || 'Unknown'} color="blue" isTruncated />
+            <MetadataSmallCard icon={IconClock} title="Тривалість" value={metadata?.formatted_duration || '00:00:00'} color="teal" />
+            <MetadataSmallCard icon={IconDatabase} title="Розмір" value={`${metadata?.file_size_gb?.toFixed(2)} GB`} color="orange" />
           </SimpleGrid>
         </Stack>
       </Paper>
+
+      <Grid gutter="xl">
+        {/* left box */}
+        <Grid.Col span={{ base: 12, lg: 7 }}>
+          <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" h="100%">
+            <Stack gap="xl" h="100%" justify="space-between">
+              <Stack gap={2}>
+                <Title order={3} fw={800} c="dark.4">Розподіл часу мовлення за статями</Title>
+                <Text size="sm" c="dimmed" fw={500}>Співвідношення голосів та фонового шуму</Text>
+              </Stack>
+
+              <Center py="lg">
+                <Group gap={30} justify="center" wrap="wrap">
+                  <BubbleIndicator percent={manPercent} color={colors.man} label="Чоловіки" size={getBubbleSize(manPercent)} />
+                  <BubbleIndicator percent={womanPercent} color={colors.woman} label="Жінки" size={getBubbleSize(womanPercent)} />
+                  <BubbleIndicator percent={silencePercent} color={colors.silence} label="Тиша" size={getBubbleSize(silencePercent)} />
+                </Group>
+              </Center>
+
+              <SimpleGrid cols={3} pt="md">
+                <LegendDetail label="Чоловіча стать" value={`${manMins.toFixed(1)} хв`} color={colors.man} />
+                <LegendDetail label="Жіноча стать" value={`${womanMins.toFixed(1)} хв`} color={colors.woman} />
+                <LegendDetail label="Тиша" value={`${silenceMins.toFixed(1)} хв`} color={colors.silence} />
+              </SimpleGrid>
+            </Stack>
+          </Paper>
+        </Grid.Col>
+
+        {/* right box */}
+        <Grid.Col span={{ base: 12, lg: 5 }}>
+          <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" h="100%">
+            <Stack gap="xl">
+              <Stack gap={2}>
+                <Title order={3} fw={800} c="dark.4">Розподіл реплік за статями</Title>
+                <Text size="sm" c="dimmed" fw={500}>Аналіз за кількістю фраз</Text>
+              </Stack>
+
+              <Center py="xl">
+                <Group gap="xl" wrap="nowrap">
+                  <RingProgress
+                    size={160}
+                    thickness={16}
+                    roundCaps
+                    sections={[
+                      { value: manRepPercent, color: colors.manDonut },
+                      { value: womanRepPercent, color: colors.womanDonut },
+                    ]}
+                    label={
+                      <Center>
+                        <ThemeIcon color="gray.1" variant="light" radius="xl" size="xl">
+                            <IconMicrophone
+                              style={{ width: rem(22), height: rem(22) }}
+                              color="gray"
+                            />
+                        </ThemeIcon>
+                      </Center>
+                    }
+                  />
+                  <Stack gap="xs">
+                    <DonutLegendItem color={colors.manDonut} label="Чоловіки" value={manReps} percent={manRepPercent} />
+                    <DonutLegendItem color={colors.womanDonut} label="Жінки" value={womanReps} percent={womanRepPercent} />
+                    <Divider my="xs" />
+                    <Text size="15px" c="dimmed" fw={700}>Всього: {totalReps} реплік</Text>
+                  </Stack>
+                </Group>
+              </Center>
+
+              <Paper withBorder radius="lg" p="md" bg="gray.0">
+                 <Text size="sm" fw={600} ta="center">Стать із більшої кількістю реплік: {manReps > womanReps ? "Чоловіча" : "Жіноча"}</Text>
+              </Paper>
+            </Stack>
+          </Paper>
+        </Grid.Col>
+      </Grid>
+
+      {/* for debug */}
+      <Box mt="xl" p="md" style={{ opacity: 0.5 }}>
+        <Text size="xs" family="monospace">{JSON.stringify({ data })}</Text>
+      </Box>
     </Box>
+  );
+}
+
+
+function DonutLegendItem({ color, label, value, percent }) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="xl">
+      <Group gap="xs">
+        <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: color }} />
+        <Text size="sm" fw={700} c="dark.3">{label}</Text>
+      </Group>
+      <Stack gap={0} align="flex-end">
+        <Text size="sm" fw={800}>{percent}%</Text>
+        <Text size="15px" c="dimmed">{value} шт.</Text>
+      </Stack>
+    </Group>
   );
 }
 
@@ -142,32 +185,62 @@ function BubbleIndicator({ percent, color, label, size }) {
 
 // for small metadata cards in the upper row of dashboard
 function MetadataSmallCard({ icon: Icon, title, value, color, isTruncated }) {
+  const pastelMap = {
+    blue: { bg: '#F3F0FF', icon: '#A197FF' },
+    teal: { bg: '#EBFBEE', icon: '#66D19E' },
+    orange: { bg: '#FFF9DB', icon: '#FFD56D' },
+    pink: { bg: '#FFF0F6', icon: '#FF8BA7' },
+  };
+
+  const theme = pastelMap[color] || pastelMap.blue;
+
   return (
-    <Paper radius="24px" p="lg" withBorder shadow="xs">
-      <Group gap="md" wrap="nowrap">
-        <ThemeIcon size={44} radius="16px" variant="light" color={color}>
-          <Icon size={24} />
+    <Paper
+      radius="18px"
+      p="md"
+      shadow="none"
+      style={{
+        backgroundColor: theme.bg,
+        border: 'none',
+      }}
+    >
+      <Group gap="sm" wrap="nowrap">
+        <ThemeIcon
+          size={34}
+          radius="50%"
+          style={{
+            backgroundColor: theme.icon,
+            color: 'white',
+          }}
+        >
+          <Icon size={18} />
         </ThemeIcon>
 
-        <Stack gap={0} align="flex-start" style={{ flex: 1, overflow: 'hidden' }}>
-          <Text size="xs" c="dimmed" fw={700} tt="uppercase" lts="1px">
-            {title}
-          </Text>
+        <Stack gap={0} style={{ flex: 1, overflow: 'hidden' }}>
           <Text
-            fw={800}
+            fw={900}
             size="md"
+            c="dark.7"
             truncate={isTruncated}
-            title={isTruncated ? value : undefined}
-            style={{ width: '100%' }}
+            style={{ lineHeight: 1.2 }}
           >
             {value}
+          </Text>
+          <Text
+            size="10px"
+            c="dimmed"
+            fw={700}
+            tt="uppercase"
+            lts="0.5px"
+            style={{ opacity: 0.8 }}
+          >
+            {title}
           </Text>
         </Stack>
       </Group>
     </Paper>
   );
 }
-
 
 function LegendDetail({ label, value, color }) {
     return (
