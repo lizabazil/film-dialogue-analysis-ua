@@ -20,7 +20,18 @@ class MetaData(BaseModel):
     file_size_gb: float
 
 
+class WordFrequency(BaseModel):
+    word: str
+    count: int
+
+
+class SpeakerLexicon(BaseModel):
+    top_man_lemmas: list[WordFrequency]
+    top_woman_lemmas: list[WordFrequency]
+    top_all_gender_lemmas: list[WordFrequency]
+
+
 class MovieAnalysisReport(BaseModel):
     gender_stats: GenderBalance
     metadata: MetaData
-    #top_keywords: list[dict[str, int]]
+    speaker_lexicon: SpeakerLexicon
