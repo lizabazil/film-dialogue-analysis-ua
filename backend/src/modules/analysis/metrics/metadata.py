@@ -11,7 +11,7 @@ class MetaDataMetric(BaseMetric):
         hour, minute, seconds = VideoUtils.get_duration_of_video(video_path)
 
         duration_in_minutes = hour * 60 + minute
-        formatted_duration = f"{hour}:{minute}:{seconds}"
+        formatted_duration = f"{hour:02}:{minute:02}:{seconds:02}"
         file_size_in_gb = self._get_file_size_gb(video_path)
 
         return {
