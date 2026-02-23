@@ -1,14 +1,15 @@
 import {
   Grid, Paper, Text, Group, rem,
-  Title, Stack, Box, ThemeIcon, SimpleGrid, Center, RingProgress, Divider
+  Title, Stack, Box, ThemeIcon, SimpleGrid, Center, RingProgress, Divider, Progress
 } from '@mantine/core';
 import {
-  IconClock, IconDatabase, IconMessage2,
-  IconUserHeart, IconFileDescription, IconVolumeOff, IconChartDonut, IconMicrophone
+  IconClock, IconDatabase, IconMessage2, IconGenderMale, IconGenderFemale,
+  IconUserHeart, IconFileDescription, IconVolumeOff, IconChartDonut, IconMicrophone, IconTypography, IconQuote
 } from '@tabler/icons-react';
 
 export function StatsDashboard({ data }) {
-  const { gender_stats: stats, metadata } = data || {};
+  const rootData = data?.data || data;
+  const { gender_stats: stats, metadata, speaker_lexicon } = rootData || {};
 
   const womanMins = stats?.woman_time_minutes || 0;
   const manMins = stats?.man_time_minutes || 0;
@@ -25,28 +26,29 @@ export function StatsDashboard({ data }) {
   const manRepPercent = totalReplicas > 0 ? Math.round((manReplicas / totalReplicas) * 100) : 0;
   const womanRepPercent = totalReplicas > 0 ? Math.round((womanReplicas / totalReplicas) * 100) : 0;
 
+  const colors = {
+    man: '#65489A',
+    woman: '#B98793',
+    silence: '#7FB9A3',
+    manBarBase: '#2D4396',
+    womanBarBase: '#E64980',
+      allGendersBarBase: '#E8A755',
+      manDonut: '#ABB2FA',
+    womanDonut: '#F37D8B'
+  };
+
   const getBubbleSize = (percent) => {
     const MIN_SIZE = 100;
     const MAX_SIZE = 180;
     return MIN_SIZE + (percent / 100) * (MAX_SIZE - MIN_SIZE);
   };
 
-  const colors = {
-    man: '#65489A',
-    woman: '#B98793',
-    silence: '#7FB9A3',
-    manDonut: '#ABB2FA',
-    womanDonut: '#F37D8B'
-  };
-
   return (
     <Box p="md" bg="#f8f9fa" minh="100vh">
+      {/* 1. metadata */}
       <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" mb="xl">
         <Stack gap="md">
-          <Stack gap={2} mb="xs">
-            <Title order={3} fw={800} c="dark.4">Параметри файлу</Title>
-            <Text size="sm" c="dimmed" fw={500}>Загальна інформація про медіафайл</Text>
-          </Stack>
+          <Title order={3} fw={800} c="dark.4">Параметри файлу</Title>
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             <MetadataSmallCard icon={IconFileDescription} title="Файл" value={metadata?.filename || 'Unknown'} color="blue" isTruncated />
             <MetadataSmallCard icon={IconClock} title="Тривалість" value={metadata?.formatted_duration || '00:00:00'} color="teal" />
@@ -129,14 +131,136 @@ export function StatsDashboard({ data }) {
         </Grid.Col>
       </Grid>
 
-      {/* for debug */}
-      <Box mt="xl" p="md" style={{ opacity: 0.5 }}>
-        <Text size="xs" family="monospace">{JSON.stringify({ data })}</Text>
-      </Box>
+
+      {/* 3. most common words by gender */}
+      <Grid gutter="xl">
+        <Grid.Col span={9}>
+          <KeywordBarChart
+            title="Найбільш вживані слова (Чоловіки)"
+            keywords={speaker_lexicon?.top_man_lemmas}
+            baseColor={colors.manBarBase}
+            icon={IconGenderMale}
+          />
+        </Grid.Col>
+        <Grid.Col span={9}>
+          <KeywordBarChart
+            title="Найбільш вживані слова (Жінки)"
+            keywords={speaker_lexicon?.top_woman_lemmas}
+            baseColor={colors.womanBarBase}
+            icon={IconGenderFemale}
+          />
+        </Grid.Col>
+
+           <Grid.Col span={9}>
+          <KeywordBarChart
+            title="Найбільш вживані слова"
+            keywords={speaker_lexicon?.top_all_gender_lemmas}
+            baseColor={colors.allGendersBarBase}
+            icon={IconQuote}
+          />
+        </Grid.Col>
+      </Grid>
     </Box>
   );
 }
 
+
+function KeywordBarChart({ title, keywords, baseColor, icon: Icon }) {
+  const slicedKeywords = keywords?.slice(0, 10) || [];
+  const maxCount = slicedKeywords.length > 0 ? Math.max(...slicedKeywords.map(k => k.count)) : 1;
+  const totalItems = slicedKeywords.length;
+  const textMainColor = "dark.7";
+
+  return (
+    <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" h="100%">
+      <Stack gap="lg">
+        <Group justify="space-between">
+          <Group gap="xs">
+            <ThemeIcon variant="light" color="gray" radius="xl" size="md">
+               <Icon size={16} />
+            </ThemeIcon>
+            <Title order={3} fw={800} c="dark.4">{title}</Title>
+          </Group>
+        </Group>
+
+        <Stack gap="md">
+          {slicedKeywords.map((item, index) => {
+            const lightenIntensity = (index / Math.max(1, totalItems - 1)) * 60;
+            const rowColor = `color-mix(in srgb, ${baseColor}, white ${lightenIntensity}%)`;
+
+            return (
+              <Group key={index} gap="md" wrap="nowrap" align="center">
+                <Box
+                  w={8} h={8}
+                  style={{ borderRadius: '50%', backgroundColor: rowColor, flexShrink: 0 }}
+                />
+
+                <Box style={{ flex: 1 }}>
+                   <Progress
+                      value={(item.count / maxCount) * 100}
+                      color={rowColor}
+                      size="xl"
+                      radius="xl"
+                      styles={{ section: { transition: 'width 1s ease' } }}
+                   />
+                </Box>
+
+                <Text
+                  size="sm"
+                  fw={700}
+                  w={130}
+                  style={{
+                    color: textMainColor,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  {item.word}
+                </Text>
+
+                <Text
+                  size="sm"
+                  fw={800}
+                  w={40}
+                  ta="right"
+                  style={{
+                    color: textMainColor,
+                    flexShrink: 0
+                  }}
+                >
+                  {item.count}
+                </Text>
+              </Group>
+            );
+          })}
+          {slicedKeywords.length === 0 && (
+            <Text c="dimmed" ta="center" py="xl">Дані відсутні</Text>
+          )}
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function MetadataSmallCard({ icon: Icon, title, value, color, isTruncated }) {
+    const pastelMap = {
+      blue: { bg: '#F3F0FF', icon: '#A197FF' },
+      teal: { bg: '#EBFBEE', icon: '#66D19E' },
+      orange: { bg: '#FFF9DB', icon: '#FFD56D' },
+    };
+    const theme = pastelMap[color] || pastelMap.blue;
+    return (
+      <Paper radius="18px" p="md" style={{ backgroundColor: theme.bg }}>
+        <Group gap="sm" wrap="nowrap">
+          <ThemeIcon size={34} radius="50%" style={{ backgroundColor: theme.icon }}><Icon size={18} /></ThemeIcon>
+          <Stack gap={0} style={{ flex: 1, overflow: 'hidden' }}>
+            <Text fw={900} size="md" c="dark.7" truncate={isTruncated}>{value}</Text>
+            <Text size="10px" c="dimmed" fw={700} tt="uppercase">{title}</Text>
+          </Stack>
+        </Group>
+      </Paper>
+    );
+}
 
 function DonutLegendItem({ color, label, value, percent }) {
   return (
@@ -183,64 +307,6 @@ function BubbleIndicator({ percent, color, label, size }) {
   );
 }
 
-// for small metadata cards in the upper row of dashboard
-function MetadataSmallCard({ icon: Icon, title, value, color, isTruncated }) {
-  const pastelMap = {
-    blue: { bg: '#F3F0FF', icon: '#A197FF' },
-    teal: { bg: '#EBFBEE', icon: '#66D19E' },
-    orange: { bg: '#FFF9DB', icon: '#FFD56D' },
-    pink: { bg: '#FFF0F6', icon: '#FF8BA7' },
-  };
-
-  const theme = pastelMap[color] || pastelMap.blue;
-
-  return (
-    <Paper
-      radius="18px"
-      p="md"
-      shadow="none"
-      style={{
-        backgroundColor: theme.bg,
-        border: 'none',
-      }}
-    >
-      <Group gap="sm" wrap="nowrap">
-        <ThemeIcon
-          size={34}
-          radius="50%"
-          style={{
-            backgroundColor: theme.icon,
-            color: 'white',
-          }}
-        >
-          <Icon size={18} />
-        </ThemeIcon>
-
-        <Stack gap={0} style={{ flex: 1, overflow: 'hidden' }}>
-          <Text
-            fw={900}
-            size="md"
-            c="dark.7"
-            truncate={isTruncated}
-            style={{ lineHeight: 1.2 }}
-          >
-            {value}
-          </Text>
-          <Text
-            size="10px"
-            c="dimmed"
-            fw={700}
-            tt="uppercase"
-            lts="0.5px"
-            style={{ opacity: 0.8 }}
-          >
-            {title}
-          </Text>
-        </Stack>
-      </Group>
-    </Paper>
-  );
-}
 
 function LegendDetail({ label, value, color }) {
     return (

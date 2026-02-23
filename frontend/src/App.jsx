@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { AppShell, Loader, Alert, Stack, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { Sidebar } from './components/Sidebar';
@@ -13,43 +14,46 @@ export default function App() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const handleFileSelect = async (file) => {
-    setUploadedFile(file);
-    setIsAnalyzing(true);
-    setError(null);
 
-    // 1. prepare data for sending
-    const formData = new FormData();
-    formData.append("file", file); // "file" is a key that backend expects
+  const handleFileSelect = async (file) => {
+      setUploadedFile((file));
+    setIsAnalyzing(true);
+    const chunkSize = 10 * 1024 * 1024; // 10 mb for one chunk
+    const totalChunks = Math.ceil(file.size / chunkSize);
 
     try {
-        console.log("Sending file to backend...");
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize, file.size);
+            const chunk = file.slice(start, end);
 
-        // send request to local FastAPI backend
-        const response = await fetch("http://127.0.0.1:8000/analyze", {
-            method: "POST",
-            body: formData,
-        });
+            const formData = new FormData();
+            formData.append("chunk", chunk);
+            formData.append("chunkIndex", i);
+            formData.append("filename", file.name);
 
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.statusText}`);
+            // send each chunk to backend
+            await axios.post("http://127.0.0.1:8000/upload-chunk", formData);
+
+            const progress = Math.round(((i + 1) / totalChunks) * 100);
+            console.log(`Loaded chunk ${i + 1} of ${totalChunks} (${progress}%)`);
         }
 
-        // receive json response with analysis results
-        const data = await response.json();
-        console.log("Analysis complete:", data);
+        // start analysis after all chunks are uploaded
+        const finalResponse = await axios.post("http://127.0.0.1:8000/analyze", {
+            filename: file.name
+        });
 
-        setAnalysisResult(data); // save results to state
-        setActiveTab(2); // switch to dashboard tab to show results
-
+        setAnalysisResult(finalResponse.data);
+        setActiveTab(2); // switch to dashboard tab
     } catch (err) {
-        console.error("Upload failed:", err);
-        setError("Failed to process video. Make sure backend is running.");
-        setUploadedFile(null); // reset file selection on error case
+        console.error("Error while uploading chunks:", err);
+        setError("Uploading stopped.");
     } finally {
         setIsAnalyzing(false);
     }
-  };
+};
+
 
   return (
     <AppShell
