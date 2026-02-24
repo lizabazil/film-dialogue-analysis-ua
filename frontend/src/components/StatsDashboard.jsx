@@ -145,8 +145,8 @@ export function StatsDashboard({ data }) {
 
 
       {/* 3. most common words by gender */}
-      <Grid gutter="xl">
-        <Grid.Col span={9}>
+      <Grid gutter="xl" justify="center">
+        <Grid.Col span={{ base: 12, md: 9 }}>
           <KeywordBarChart
             title="Найбільш вживані слова (Чоловіки)"
             keywords={speaker_lexicon?.top_man_lemmas}
@@ -154,7 +154,7 @@ export function StatsDashboard({ data }) {
             icon={IconGenderMale}
           />
         </Grid.Col>
-        <Grid.Col span={9}>
+        <Grid.Col span={{ base: 12, md: 9 }}>
           <KeywordBarChart
             title="Найбільш вживані слова (Жінки)"
             keywords={speaker_lexicon?.top_woman_lemmas}
@@ -163,7 +163,7 @@ export function StatsDashboard({ data }) {
           />
         </Grid.Col>
 
-           <Grid.Col span={9}>
+           <Grid.Col span={{ base: 12, md: 9 }}>
           <KeywordBarChart
             title="Найбільш вживані слова"
             keywords={speaker_lexicon?.top_all_gender_lemmas}
@@ -174,8 +174,8 @@ export function StatsDashboard({ data }) {
       </Grid>
 
 
-        <Grid gutter="xl" mt="md">
-        <Grid.Col span={9}>
+        <Grid gutter="xl" mt="md" justify="center">
+        <Grid.Col span={{ base: 12, md: 9 }}>
            <GeneralLexicon
               nouns={nouns}
               verbs={verbs}
