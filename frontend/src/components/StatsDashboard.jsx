@@ -8,6 +8,10 @@ import {
 } from '@tabler/icons-react';
 import { GeneralLexicon } from './GeneralLexicon';
 import { KeywordBarChart } from './KeywordBarChart';
+import { MetadataSmallCard} from "./MetadataSmallCard.jsx";
+import { BubbleIndicator} from "./BubbleIndicator.jsx";
+import { LegendDetail} from "./LegendDetail.jsx";
+import { DonutLegendItem} from "./DonutLegendItem.jsx";
 
 
 export function StatsDashboard({ data }) {
@@ -181,80 +185,4 @@ export function StatsDashboard({ data }) {
       </Grid>
     </Box>
   );
-}
-
-
-function MetadataSmallCard({ icon: Icon, title, value, color, isTruncated }) {
-    const pastelMap = {
-      blue: { bg: '#F3F0FF', icon: '#A197FF' },
-      teal: { bg: '#EBFBEE', icon: '#66D19E' },
-      orange: { bg: '#FFF9DB', icon: '#FFD56D' },
-    };
-    const theme = pastelMap[color] || pastelMap.blue;
-    return (
-      <Paper radius="18px" p="md" style={{ backgroundColor: theme.bg }}>
-        <Group gap="sm" wrap="nowrap">
-          <ThemeIcon size={34} radius="50%" style={{ backgroundColor: theme.icon }}><Icon size={18} /></ThemeIcon>
-          <Stack gap={0} style={{ flex: 1, overflow: 'hidden' }}>
-            <Text fw={900} size="md" c="dark.7" truncate={isTruncated}>{value}</Text>
-            <Text size="10px" c="dimmed" fw={700} tt="uppercase">{title}</Text>
-          </Stack>
-        </Group>
-      </Paper>
-    );
-}
-
-function DonutLegendItem({ color, label, value, percent }) {
-  return (
-    <Group justify="space-between" wrap="nowrap" gap="xl">
-      <Group gap="xs">
-        <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: color }} />
-        <Text size="sm" fw={700} c="dark.3">{label}</Text>
-      </Group>
-      <Stack gap={0} align="flex-end">
-        <Text size="sm" fw={800}>{percent}%</Text>
-        <Text size="15px" c="dimmed">{value} шт.</Text>
-      </Stack>
-    </Group>
-  );
-}
-
-
-function BubbleIndicator({ percent, color, label, size }) {
-  return (
-    <Stack align="center" gap="xs">
-      <Center
-        w={size}
-        h={size}
-        style={{
-          borderRadius: '50%',
-          backgroundColor: `${color}33`,
-          boxShadow: `0 8px 16px -4px ${color}40`,
-          transition: 'transform 0.3s ease'
-        }}
-      >
-        <Stack gap={0} align="center">
-          <Text
-            c={color}
-            fw={900}
-            size={rem(size / 4)}
-            style={{ lineHeight: 1 }}
-          >
-            {percent}%
-          </Text>
-        </Stack>
-      </Center>
-      <Text fw={700} size="sm" c="dark.3">{label}</Text>
-    </Stack>
-  );
-}
-
-
-function LegendDetail({ label, value, color }) {
-    return (
-        <Stack gap={0} align="center">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase">{label}</Text>
-            <Text fw={800} c={color}>{value}</Text>
-        </Stack>
-    );
 }
