@@ -29,6 +29,9 @@ class SpeakerLexicon(BaseModel):
     top_man_lemmas: list[WordFrequency]
     top_woman_lemmas: list[WordFrequency]
     top_all_gender_lemmas: list[WordFrequency]
+    top_nouns_all_genders: list[WordFrequency]
+    top_verbs_all_genders: list[WordFrequency]
+    top_adjectives_all_genders: list[WordFrequency]
 
 
 class MovieAnalysisReport(BaseModel):
