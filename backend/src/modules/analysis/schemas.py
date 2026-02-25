@@ -7,6 +7,9 @@ class GenderBalance(BaseModel):
 
     woman_replicas: int
     man_replicas: int
+    avg_words_per_replica_woman: float   # mlu
+    avg_words_per_replica_man: float
+    bechdel_test: bool  # whether dialogues has passed the Bechdel test
     #man_time_ms: int
     #woman_time_ms: int
     #man_word_count: int
