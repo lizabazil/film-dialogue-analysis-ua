@@ -263,6 +263,12 @@ export function StatsDashboard({data}) {
             </Box>
 
             {/* 3. most common words by gender */}
+            <Divider
+                my="xl"
+                label={<Text size="sm" fw={700} c="dimmed">ЛІНГВІСТИЧНИЙ АНАЛІЗ</Text>}
+                labelPosition="center"
+            />
+
             <Box mt="xl" mb="xl">
                 <Group mb="md" ml="md" justify="space-between">
                     <Stack gap={0}>
@@ -270,38 +276,11 @@ export function StatsDashboard({data}) {
                         <Text size="xs" c="dimmed">Топ слів за частотою використання</Text>
                     </Stack>
                 </Group>
-
-                <SimpleGrid cols={{base: 1, md: 3}} spacing="lg">
-                    <KeywordBarChart
-                        title="Чоловіки"
-                        keywords={speaker_lexicon?.top_man_lemmas}
-                        baseColor={colors.manBarBase}
-                        icon={IconGenderMale}
-                    />
-                    <KeywordBarChart
-                        title="Жінки"
-                        keywords={speaker_lexicon?.top_woman_lemmas}
-                        baseColor={colors.womanBarBase}
-                        icon={IconGenderFemale}
-                    />
-                    <KeywordBarChart
-                        title="Загальні"
-                        keywords={speaker_lexicon?.top_all_gender_lemmas}
-                        baseColor={colors.allGendersBarBase}
-                        icon={IconQuote}
-                    />
-                </SimpleGrid>
             </Box>
 
 
             {/* linguistic analysis */}
             <Box mt={50}>
-                <Divider
-                    my="xl"
-                    label={<Text size="sm" fw={700} c="dimmed">ЛІНГВІСТИЧНИЙ АНАЛІЗ</Text>}
-                    labelPosition="center"
-                />
-
                 {/* 1. lexicon by genders */}
                 <SimpleGrid cols={{base: 1, md: 3}} spacing="lg" mb="xl">
                     <KeywordBarChart
