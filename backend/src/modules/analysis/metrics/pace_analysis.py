@@ -29,6 +29,7 @@ class PaceAnalysis(BaseMetric):
         pass
 
     def _classify_replica(self, segment: Segment) -> SegmentPaceMetrics:
+        segment_duration_ms = segment.total_ms_end - segment.total_ms_start
         total_words = 0
         if segment.nlp_data:
             total_words = sum(
@@ -45,8 +46,10 @@ class PaceAnalysis(BaseMetric):
             replica_type = ReplicaType.STANDARD
         elif total_words <= 40:
             replica_type = ReplicaType.EXTENDED
-        else:
+        elif round(segment_duration_ms / 1000) >= 30:
             replica_type = ReplicaType.MONOLOGUE
+        else:
+            replica_type = ReplicaType.EXTENDED
 
         return SegmentPaceMetrics(word_count=total_words,
                                   duration_sec=duration_seconds,
@@ -102,7 +105,7 @@ class PaceAnalysis(BaseMetric):
     def _calculate_pace_trend_point_for_window(self, window_segments: list[Segment], segments: list[Segment],
                                                all_transitions: list[TurnTransition],
                                                window_start_ms: int, window_end_ms: int) -> (PaceTrendPoint | None):
-        if not window_segments:  # the complete silence for the whole movie
+        if not window_segments:  # the complete silence for the whole window
             return PaceTrendPoint(timestamps_total_ms=window_end_ms,
                                   total_local_words=0,
                                   silence_percentage=100,
@@ -135,7 +138,3 @@ class PaceAnalysis(BaseMetric):
                               silence_percentage=silence_percentage,
                               dominant_replica_type=dominant_replica_type,
                               dominant_pause_type=dominant_pause_type)
-
-    def _evaluate_overall_pace(self, trends: list[PaceTrendPoint]) -> str:
-        # TODO: might be completed later
-        pass

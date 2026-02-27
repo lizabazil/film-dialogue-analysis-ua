@@ -6,7 +6,7 @@ class ReplicaType(str, Enum):  # about replica type (how short/long it is)
     REACTIVE = "reactive"  # very short replicas (1-3 words only)
     STANDARD = "standard"  # normal replicas (4-15 words)
     EXTENDED = "extended"  # extended replicas (16-40)
-    MONOLOGUE = "monologue"   # long monologues  (>= 40 words or >= 30 seconds long)  # TODO: probably delete about monologue duration
+    MONOLOGUE = "monologue"   # long monologues  (>= 30 seconds long)
 
 
 class PauseType(str, Enum):   # what is happening between replicas
@@ -37,8 +37,6 @@ class PaceTrendPoint(BaseModel):  # for one sliding window
 
 
 class PaceGlobalAnalysis(BaseModel):
-    #result_pace_label: str  # slow, normal, dynamic
-
     total_monologues: int
     total_long_pauses: int
     total_instant_responses: int
@@ -60,8 +58,6 @@ class GenderBalance(BaseModel):
     avg_words_per_replica_woman: float
     avg_words_per_replica_man: float
     bechdel_test: BechdelTest  # info about Bechdel test
-    #man_time_ms: int
-    #woman_time_ms: int
     #man_word_count: int
     #woman_word_count: int
 
