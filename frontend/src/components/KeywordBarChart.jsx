@@ -1,78 +1,60 @@
-import {Box, Group, Paper, Progress, Stack, Text, ThemeIcon, Title} from "@mantine/core";
+import {Group, Paper, Progress, Stack, Text, ThemeIcon, Center} from "@mantine/core";
 
-export function KeywordBarChart({ title, keywords, baseColor, icon: Icon }) {
-  const slicedKeywords = keywords?.slice(0, 10) || [];
-  const maxCount = slicedKeywords.length > 0 ? Math.max(...slicedKeywords.map(k => k.count)) : 1;
-  const totalItems = slicedKeywords.length;
-  const textMainColor = "dark.7";
 
-  return (
-    <Paper radius="40px" p="xl" withBorder shadow="md" bg="white" h="100%">
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <Group gap="xs">
-            <ThemeIcon variant="light" color="gray" radius="xl" size="md">
-               <Icon size={16} />
-            </ThemeIcon>
-            <Title order={3} fw={800} c="dark.4">{title}</Title>
-          </Group>
-        </Group>
+export function KeywordBarChart({title, keywords, baseColor, icon: Icon}) {
+    const slicedKeywords = keywords?.slice(0, 10) || [];
+    const maxCount = slicedKeywords.length > 0 ? Math.max(...slicedKeywords.map(k => k.count)) : 1;
+    const totalItems = slicedKeywords.length;
 
-        <Stack gap="md">
-          {slicedKeywords.map((item, index) => {
-            const lightenIntensity = (index / Math.max(1, totalItems - 1)) * 60;
-            const rowColor = `color-mix(in srgb, ${baseColor}, white ${lightenIntensity}%)`;
+    return (
+        <Paper radius="32px" p="lg" withBorder shadow="sm" bg="white" h="100%" style={{border: '1px solid #f1f3f5'}}>
+            <Stack gap="md">
+                <Group gap="xs" mb="xs">
+                    <ThemeIcon variant="light" color="gray" radius="md" size="md">
+                        <Icon size={16}/>
+                    </ThemeIcon>
 
-            return (
-              <Group key={index} gap="md" wrap="nowrap" align="center">
-                <Box
-                  w={8} h={8}
-                  style={{ borderRadius: '50%', backgroundColor: rowColor, flexShrink: 0 }}
-                />
+                    <Text fw={800} size="md" c="dark.4" style={{letterSpacing: '0.5px', textTransform: 'uppercase'}}>
+                        {title}
+                    </Text>
+                </Group>
 
-                <Box style={{ flex: 1 }}>
-                   <Progress
-                      value={(item.count / maxCount) * 100}
-                      color={rowColor}
-                      size="xl"
-                      radius="xl"
-                      styles={{ section: { transition: 'width 1s ease' } }}
-                   />
-                </Box>
+                <Stack gap="sm">
+                    {slicedKeywords.map((item, index) => {
+                        const lightenIntensity = (index / Math.max(1, totalItems - 1)) * 50;
+                        const rowColor = `color-mix(in srgb, ${baseColor}, white ${lightenIntensity}%)`;
 
-                <Text
-                  size="sm"
-                  fw={700}
-                  w={130}
-                  style={{
-                    color: textMainColor,
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  {item.word}
-                </Text>
+                        return (
+                            <Stack key={index} gap={4}>
+                                <Group justify="space-between" wrap="nowrap">
 
-                <Text
-                  size="sm"
-                  fw={800}
-                  w={40}
-                  ta="right"
-                  style={{
-                    color: textMainColor,
-                    flexShrink: 0
-                  }}
-                >
-                  {item.count}
-                </Text>
-              </Group>
-            );
-          })}
-          {slicedKeywords.length === 0 && (
-            <Text c="dimmed" ta="center" py="xl">Дані відсутні</Text>
-          )}
-        </Stack>
-      </Stack>
-    </Paper>
-  );
+                                    <Text size="sm" fw={700} c="dark.6"
+                                          style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                        {item.word}
+                                    </Text>
+
+                                    <Text size="sm" fw={700} c="dimmed">
+                                        {item.count}
+                                    </Text>
+
+                                </Group>
+                                <Progress
+                                    value={(item.count / maxCount) * 100}
+                                    color={rowColor}
+                                    size="md"
+                                    radius="xl"
+                                    styles={{section: {transition: 'width 1s ease'}}}
+                                />
+                            </Stack>
+                        );
+                    })}
+                    {slicedKeywords.length === 0 && (
+                        <Center h={100}>
+                            <Text size="sm" c="dimmed">Дані відсутні</Text>
+                        </Center>
+                    )}
+                </Stack>
+            </Stack>
+        </Paper>
+    );
 }

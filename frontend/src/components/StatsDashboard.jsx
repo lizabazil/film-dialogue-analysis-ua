@@ -263,44 +263,74 @@ export function StatsDashboard({data}) {
             </Box>
 
             {/* 3. most common words by gender */}
-            <Grid gutter="xl" justify="center">
-                <Grid.Col span={{base: 12, md: 9}}>
+            <Box mt="xl" mb="xl">
+                <Group mb="md" ml="md" justify="space-between">
+                    <Stack gap={0}>
+                        <Title order={4} fw={700}>Найбільш вживані леми</Title>
+                        <Text size="xs" c="dimmed">Топ слів за частотою використання</Text>
+                    </Stack>
+                </Group>
+
+                <SimpleGrid cols={{base: 1, md: 3}} spacing="lg">
                     <KeywordBarChart
-                        title="Найбільш вживані слова (Чоловіки)"
+                        title="Чоловіки"
                         keywords={speaker_lexicon?.top_man_lemmas}
                         baseColor={colors.manBarBase}
                         icon={IconGenderMale}
                     />
-                </Grid.Col>
-                <Grid.Col span={{base: 12, md: 9}}>
                     <KeywordBarChart
-                        title="Найбільш вживані слова (Жінки)"
+                        title="Жінки"
                         keywords={speaker_lexicon?.top_woman_lemmas}
                         baseColor={colors.womanBarBase}
                         icon={IconGenderFemale}
                     />
-                </Grid.Col>
-
-                <Grid.Col span={{base: 12, md: 9}}>
                     <KeywordBarChart
-                        title="Найбільш вживані слова"
+                        title="Загальні"
                         keywords={speaker_lexicon?.top_all_gender_lemmas}
                         baseColor={colors.allGendersBarBase}
                         icon={IconQuote}
                     />
-                </Grid.Col>
-            </Grid>
+                </SimpleGrid>
+            </Box>
 
 
-            <Grid gutter="xl" mt="md" justify="center">
-                <Grid.Col span={{base: 12, md: 9}}>
-                    <GeneralLexicon
-                        nouns={nouns}
-                        verbs={verbs}
-                        adjectives={adjectives}
+            {/* linguistic analysis */}
+            <Box mt={50}>
+                <Divider
+                    my="xl"
+                    label={<Text size="sm" fw={700} c="dimmed">ЛІНГВІСТИЧНИЙ АНАЛІЗ</Text>}
+                    labelPosition="center"
+                />
+
+                {/* 1. lexicon by genders */}
+                <SimpleGrid cols={{base: 1, md: 3}} spacing="lg" mb="xl">
+                    <KeywordBarChart
+                        title="Чоловіки"
+                        keywords={speaker_lexicon?.top_man_lemmas}
+                        baseColor={colors.manBarBase}
+                        icon={IconGenderMale}
                     />
-                </Grid.Col>
-            </Grid>
+                    <KeywordBarChart
+                        title="Жінки"
+                        keywords={speaker_lexicon?.top_woman_lemmas}
+                        baseColor={colors.womanBarBase}
+                        icon={IconGenderFemale}
+                    />
+                    <KeywordBarChart
+                        title="Загальні леми"
+                        keywords={speaker_lexicon?.top_all_gender_lemmas}
+                        baseColor={colors.allGendersBarBase}
+                        icon={IconQuote}
+                    />
+                </SimpleGrid>
+
+                {/* 2. lexicon by parts of speech */}
+                <GeneralLexicon
+                    nouns={nouns}
+                    verbs={verbs}
+                    adjectives={adjectives}
+                />
+            </Box>
 
             <Box mt={50} p="md">
                 <Title order={5} mb="sm" c="dimmed">Debug Inspector:</Title>
