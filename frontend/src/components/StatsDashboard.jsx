@@ -1,5 +1,5 @@
 import {
-  Grid, Paper, Text, Group, rem,
+  Grid, Paper, Text, Group, rem, Code,
   Title, Stack, Box, ThemeIcon, SimpleGrid, Center, RingProgress, Divider, Progress
 } from '@mantine/core';
 import {
@@ -12,6 +12,7 @@ import { MetadataSmallCard} from "./MetadataSmallCard.jsx";
 import { BubbleIndicator} from "./BubbleIndicator.jsx";
 import { LegendDetail} from "./LegendDetail.jsx";
 import { DonutLegendItem} from "./DonutLegendItem.jsx";
+import { SpeechComplexity} from "./ComplexityCard.jsx";
 
 
 export function StatsDashboard({ data }) {
@@ -32,6 +33,9 @@ export function StatsDashboard({ data }) {
 
   const manRepPercent = totalReplicas > 0 ? Math.round((manReplicas / totalReplicas) * 100) : 0;
   const womanRepPercent = totalReplicas > 0 ? Math.round((womanReplicas / totalReplicas) * 100) : 0;
+
+  const avgWordsPerReplicaWoman = stats?.avg_words_per_replica_woman || 0;
+  const avgWordsPerReplicaMan = stats?.avg_words_per_replica_man || 0;
 
   const nouns = speaker_lexicon?.top_nouns_all_genders || [];
   const verbs = speaker_lexicon?.top_verbs_all_genders || [];
@@ -144,6 +148,12 @@ export function StatsDashboard({ data }) {
       </Grid>
 
 
+      {/* boxes with average words per replica for each gender */}
+      <Box mt="xl" mb="xl">
+        <Title order={4} mb="md" ml="md" fw={700}>Аналіз довжини реплік</Title>
+        <SpeechComplexity manMlu={avgWordsPerReplicaMan} womanMlu={avgWordsPerReplicaWoman} />
+      </Box>
+
       {/* 3. most common words by gender */}
       <Grid gutter="xl" justify="center">
         <Grid.Col span={{ base: 12, md: 9 }}>
@@ -183,6 +193,13 @@ export function StatsDashboard({ data }) {
            />
         </Grid.Col>
       </Grid>
+
+      <Box mt={50} p="md">
+  <Title order={5} mb="sm" c="dimmed">Debug Inspector:</Title>
+  <Code block color="gray" style={{ maxHeight: '500px', overflow: 'auto' }}>
+    {JSON.stringify(data, null, 2)}
+  </Code>
+</Box>
     </Box>
   );
 }
