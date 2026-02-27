@@ -1,5 +1,6 @@
 import { Stack, Tooltip, UnstyledButton, rem } from '@mantine/core';
-import { IconHome2, IconFileUpload, IconGraph, IconSettings } from '@tabler/icons-react';
+import { IconFileUpload, IconGraph } from '@tabler/icons-react';
+import {useLocation, useNavigate} from "react-router-dom";
 
 function NavbarLink({ icon: Icon, label, active, onClick }) {
   return (
@@ -15,6 +16,7 @@ function NavbarLink({ icon: Icon, label, active, onClick }) {
           justifyContent: 'center',
           color: active ? 'var(--mantine-color-violet-7)' : 'var(--mantine-color-gray-7)',
           backgroundColor: active ? 'var(--mantine-color-violet-0)' : 'transparent',
+          transition: 'all 0.2s ease', // Soft UI smooth transition
         }}
       >
         <Icon style={{ width: rem(24), height: rem(24) }} stroke={1.5} />
@@ -23,20 +25,14 @@ function NavbarLink({ icon: Icon, label, active, onClick }) {
   );
 }
 
-export function Sidebar({ activeIndex, setActiveIndex }) {
-  const links = [
-    { icon: IconFileUpload, label: 'Upload' },
-    { icon: IconGraph, label: 'Analytics' },
-  ];
+export function Sidebar() {
+const navigate = useNavigate();
+  const location = useLocation();
 
-  const items = links.map((link, index) => (
-    <NavbarLink
-      {...link}
-      key={link.label}
-      active={index === activeIndex}
-      onClick={() => setActiveIndex(index)}
-    />
-  ));
+  const links = [
+    { icon: IconFileUpload, label: 'Upload', path: '/' },
+    { icon: IconGraph, label: 'Analytics', path: '/analytics' },
+  ];
 
   return (
     <nav style={{
@@ -49,9 +45,15 @@ export function Sidebar({ activeIndex, setActiveIndex }) {
       alignItems: 'center',
       backgroundColor: '#fff'
     }}>
-      <Stack justify="center" gap={10}>
-        {items}
-      </Stack>
-    </nav>
+<Stack justify="center" gap={10}>
+        {links.map((link) => (
+          <NavbarLink
+            {...link}
+            key={link.label}
+            active={location.pathname === link.path}
+            onClick={() => navigate(link.path)}
+          />
+        ))}
+      </Stack>    </nav>
   );
 }
