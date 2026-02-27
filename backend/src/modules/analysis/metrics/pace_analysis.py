@@ -91,7 +91,8 @@ class PaceAnalysis(BaseMetric):
 
             # calculate pace trend point for this window
             curr_pace_trend_point = self._calculate_pace_trend_point_for_window(window_segments, segments,
-                                                                                all_transitions)
+                                                                                all_transitions, window_start_ms,
+                                                                                current_window_end_time_ms)
             trends.append(curr_pace_trend_point)
 
             current_window_end_time_ms += step_ms
@@ -99,12 +100,16 @@ class PaceAnalysis(BaseMetric):
         return trends
 
     def _calculate_pace_trend_point_for_window(self, window_segments: list[Segment], segments: list[Segment],
-                                               all_transitions: list[TurnTransition]) -> (PaceTrendPoint | None):
-        if not window_segments:
-            return None
+                                               all_transitions: list[TurnTransition],
+                                               window_start_ms: int, window_end_ms: int) -> (PaceTrendPoint | None):
+        if not window_segments:  # the complete silence for the whole movie
+            return PaceTrendPoint(timestamps_total_ms=window_end_ms,
+                                  total_local_words=0,
+                                  silence_percentage=100,
+                                  dominant_replica_type=None,
+                                  dominant_pause_type=None)
 
-        window_ms_start = window_segments[0].total_ms_start
-        window_duration_seconds = window_segments[-1].total_ms_end - window_ms_start
+        window_duration_seconds = (window_end_ms - window_start_ms) / 1000
 
         classified_replicas = [self._classify_replica(s) for s in window_segments]  # segment pace metrics object
         total_words_in_window = sum(replica.word_count for replica in classified_replicas)
@@ -117,25 +122,20 @@ class PaceAnalysis(BaseMetric):
         all_replicas_types = [segment.category for segment in classified_replicas]
         dominant_replica_type, _ = Counter(all_replicas_types).most_common(1)[0]
 
-        all_pauses_types = [p.category.pause_category for p in window_transitions]
-        dominant_pause_type, _ = Counter(all_pauses_types).most_common(1)[0]
+        dominant_pause_type = None
+        if window_transitions:  # there are pauses
+            all_pauses_types = [p.pause_category for p in window_transitions]
+            dominant_pause_type, _ = Counter(all_pauses_types).most_common(1)[0]
 
         total_silence_seconds = sum(transition.duration_seconds for transition in window_transitions)
         silence_percentage = (total_silence_seconds / window_duration_seconds) * 100
 
-        return PaceTrendPoint(timestamps_total_ms=window_ms_start,
+        return PaceTrendPoint(timestamps_total_ms=window_end_ms,
                               total_local_words=total_words_in_window,
                               silence_percentage=silence_percentage,
                               dominant_replica_type=dominant_replica_type,
                               dominant_pause_type=dominant_pause_type)
 
     def _evaluate_overall_pace(self, trends: list[PaceTrendPoint]) -> str:
-        """
-        Дивиться на середній activity_score по всьому фільму та повертає текстову мітку («Динамічний», «Повільний»).
-        Args:
-            trends:
-
-        Returns:
-
-        """
+        # TODO: might be completed later
         pass

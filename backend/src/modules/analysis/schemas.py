@@ -28,12 +28,12 @@ class TurnTransition(BaseModel):  # about pause between two consequent segments
 
 
 class PaceTrendPoint(BaseModel):  # for one sliding window
-    timestamps_total_ms: float  # ms after the movie's start
+    timestamps_total_ms: float  # ms after the movie's start (at the end of the window)
     total_local_words: int
     silence_percentage: float  # percentage of silence in this window  (0-100)
 
-    dominant_replica_type: ReplicaType  # which type of replicas was the most common in this window
-    dominant_pause_type: TurnTransition
+    dominant_replica_type: ReplicaType | None  # which type of replicas was the most common in this window
+    dominant_pause_type: PauseType | None
 
 
 class PaceGlobalAnalysis(BaseModel):
@@ -91,3 +91,4 @@ class MovieAnalysisReport(BaseModel):
     gender_stats: GenderBalance
     metadata: MetaData
     speaker_lexicon: SpeakerLexicon
+    pace_analysis: PaceGlobalAnalysis
