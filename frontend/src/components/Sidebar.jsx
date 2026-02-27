@@ -25,10 +25,8 @@ function NavbarLink({ icon: Icon, label, active, onClick }) {
 
 export function Sidebar({ activeIndex, setActiveIndex }) {
   const links = [
-    { icon: IconHome2, label: 'Home' },
     { icon: IconFileUpload, label: 'Upload' },
     { icon: IconGraph, label: 'Analytics' },
-    { icon: IconSettings, label: 'Settings' },
   ];
 
   const items = links.map((link, index) => (
