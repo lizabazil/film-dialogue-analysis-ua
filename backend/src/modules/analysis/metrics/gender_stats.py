@@ -1,8 +1,7 @@
 from src.utils.segment import Segment
 from .base import BaseMetric
 from src.modules.post_processing.normalizers import SegmentNormalizer
-from conllu.models import TokenList
-from src.modules.speaker_enrichment.text_gender_extractor import TextGenderExtractor
+from src.modules.analysis.metrics.pace_analysis import PaceAnalysis
 
 
 class GenderStatsMetric(BaseMetric):
@@ -60,14 +59,6 @@ class GenderStatsMetric(BaseMetric):
         )
 
     def _passes_bechdel_test(self, segments: list[Segment]) -> dict:
-        """
-
-        Args:
-            segments:
-
-        Returns:
-
-        """
         points_passed = 0
 
         dialogue_groups = self._form_dialogue_groups(segments)
@@ -103,7 +94,7 @@ class GenderStatsMetric(BaseMetric):
 
         for i, seg in enumerate(segments[1:]):
             curr_segment_start_ms = seg.total_ms_start
-            prev_segment_end_ms = current_group[-1].total_ms_end #last_added_segment.total_ms_end
+            prev_segment_end_ms = current_group[-1].total_ms_end
             ms_difference = curr_segment_start_ms - prev_segment_end_ms
             seconds_difference = ms_difference // 1000  # floor division
 
@@ -186,45 +177,49 @@ class GenderStatsMetric(BaseMetric):
 
         """
         for group in segment_groups:
+            # check if there is enough words in the group (to avoid very short phrases like greetings)
+            total_words = sum(PaceAnalysis.classify_replica(s).word_count for s in group)
+            if total_words <= 6:
+                return False
             if not self._is_group_about_man(group):
                 return True
         return False
 
     def _is_group_about_man(self, segment_group: list[Segment]) -> bool:
-        male_lemmas_list = ["чоловік", "хлопець", "батько", "син", "брат", "наречений", "тато"]
+        male_lemmas_list = ["чоловік", "хлопець", "батько", "син", "брат", "наречений", "тато", "пан"]
+        male_pronouns_list = ["він", "його", "йому", "ним", "нього", "ньому"]
+
+        common_human_verbs = ["казати", "сказати", "говорити", "обіцяти", "думати", "хотіти", "працювати", "купувати",
+                              "кохати", "любити", "телефонувати", "дзвонити", "писати", "читати", "знати"]
+
         for seg in segment_group:
             if not seg.nlp_data:
                 continue
 
             for sentence in seg.nlp_data:
+                verbs_with_subjects_ids = [t.get("head") for t in sentence if t.get("deprel") == "nsubj"]
+
                 for token in sentence:
                     lemma = token.get("lemma")
-                    if lemma in male_lemmas_list:
-                        return True
-
                     deprel = token.get("deprel", "")
                     feats = token.get("feats", {})
+                    token_id = token.get("id")
+
+                    if lemma in male_lemmas_list:
+                        return True
+                    if lemma in male_pronouns_list:
+                        if feats.get("Animacy") == "Anim" and feats.get("Gender") == "Masc":
+                            return True
+
+                    # there is a nominal subject in the sentence and it was marked as male
                     if deprel == "nsubj" and feats.get("Gender") == "Masc" and feats.get("Animacy") == "Anim":
                         return True
 
-                    if self._check_third_person_past_verb_man(sentence):
-                        return True
+                    # if it's a verb in the past tense, and it was marked as a male
+                    if token.get("upos") == "VERB" and feats.get("Tense") == "Past" and feats.get("Gender") == "Masc":
+                        # there is only a verb, with subject for it
+                        if token_id not in verbs_with_subjects_ids:
+                            if lemma in common_human_verbs:
+                                return True
+
         return False
-
-    def _check_third_person_past_verb_man(self, sentence: TokenList) -> bool:
-        for token in sentence:
-            if (TextGenderExtractor._is_pronoun(token) and TextGenderExtractor._is_third_person(token) and
-                    TextGenderExtractor._is_nominal_subject(token) and TextGenderExtractor._is_number_sing(token)):
-                # go to the head
-                head_id = TextGenderExtractor._get_head_id(token)
-                head_token = TextGenderExtractor._get_token_by_id_in_the_sentence(sentence, head_id)
-                if not head_token:
-                    continue
-
-                # check for verb in past tense
-                if TextGenderExtractor._is_verb(head_token) and TextGenderExtractor._is_past_tense(head_token):
-                    if TextGenderExtractor._is_male(head_token):
-                        return True
-        return False
-
-

@@ -8,7 +8,7 @@ from src.modules.analysis.schemas import (SegmentPaceMetrics, TurnTransition, Pa
 
 class PaceAnalysis(BaseMetric):
     def calculate(self, segments: list[Segment], **kwargs) -> PaceGlobalAnalysis:
-        all_replicas_type = [self._classify_replica(s).category for s in segments]
+        all_replicas_type = [self.classify_replica(s).category for s in segments]
         total_monologue_replicas = sum(1 for r in all_replicas_type if r == ReplicaType.MONOLOGUE)
 
         all_transitions = self._analyze_all_pauses(segments)
@@ -25,7 +25,8 @@ class PaceAnalysis(BaseMetric):
         )
         pass
 
-    def _classify_replica(self, segment: Segment) -> SegmentPaceMetrics:
+    @staticmethod
+    def classify_replica(segment: Segment) -> SegmentPaceMetrics:
         segment_duration_ms = segment.total_ms_end - segment.total_ms_start
         total_words = 0
         if segment.nlp_data:
@@ -52,7 +53,8 @@ class PaceAnalysis(BaseMetric):
                                   duration_sec=duration_seconds,
                                   category=replica_type)
 
-    def _calculate_pause(self, prev_segment: Segment, curr_segment: Segment) -> TurnTransition:
+    @staticmethod
+    def _calculate_pause(prev_segment: Segment, curr_segment: Segment) -> TurnTransition:
         pause_ms = (curr_segment.total_ms_start - prev_segment.total_ms_end)
         if pause_ms <= 200:
             pause_type = PauseType.SMALL
@@ -114,7 +116,7 @@ class PaceAnalysis(BaseMetric):
 
         window_duration_seconds = (window_end_ms - window_start_ms) / 1000
 
-        classified_replicas = [self._classify_replica(s) for s in window_segments]  # segment pace metrics object
+        classified_replicas = [self.classify_replica(s) for s in window_segments]  # segment pace metrics object
         total_words_in_window = sum(replica.word_count for replica in classified_replicas)
 
         first_seg_index = segments.index(window_segments[0])
