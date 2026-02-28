@@ -101,21 +101,21 @@ export function StatsDashboard({data}) {
                             value={pace_analysis?.total_monologues || 0}
                             icon={IconUserCode}
                             color="indigo"
-                            subtext="Тривалі репліки (>30с)"
+                            subtext="Тривалі репліки (більше 30 секунд)"
                         />
                         <PaceCard
                             title="Довгі паузи"
                             value={pace_analysis?.total_long_pauses || 0}
                             icon={IconPlayerPause}
                             color="gray"
-                            subtext="Затримки більше 2с"
+                            subtext="Відсутність мовлення більше 2 секунд"
                         />
                         <PaceCard
                             title="Миттєві відповіді"
                             value={pace_analysis?.total_instant_responses || 0}
                             icon={IconBolt}
                             color="orange"
-                            subtext="Відповіді до 200мс"
+                            subtext="Відповіді до 200 мілісекунд"
                         />
                     </SimpleGrid>
 
