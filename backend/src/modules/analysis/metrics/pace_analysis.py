@@ -9,12 +9,9 @@ from src.modules.analysis.schemas import (SegmentPaceMetrics, TurnTransition, Pa
 class PaceAnalysis(BaseMetric):
     def calculate(self, segments: list[Segment], **kwargs) -> PaceGlobalAnalysis:
         all_replicas_type = [self._classify_replica(s).category for s in segments]
-        # total_short_replicas = sum(1 for replica in all_replicas_type if replica == ReplicaType.REACTIVE)
-        # total_standard_replicas = sum(1 for r in all_replicas_type if r == ReplicaType.STANDARD)
-        # total_extended_replicas = sum(1 for r in all_replicas_type if r == ReplicaType.EXTENDED)
         total_monologue_replicas = sum(1 for r in all_replicas_type if r == ReplicaType.MONOLOGUE)
 
-        all_transitions = self._analyze_all_transitions(segments)
+        all_transitions = self._analyze_all_pauses(segments)
         all_transitions_type = [pause.pause_category for pause in all_transitions]
         total_long_pauses = sum(1 for p in all_transitions_type if p == PauseType.LONG_PAUSE)
         total_small_pauses = sum(1 for p in all_transitions_type if p == PauseType.SMALL)
@@ -55,7 +52,7 @@ class PaceAnalysis(BaseMetric):
                                   duration_sec=duration_seconds,
                                   category=replica_type)
 
-    def _calculate_transition(self, prev_segment: Segment, curr_segment: Segment) -> TurnTransition:
+    def _calculate_pause(self, prev_segment: Segment, curr_segment: Segment) -> TurnTransition:
         pause_ms = (curr_segment.total_ms_start - prev_segment.total_ms_end)
         if pause_ms <= 200:
             pause_type = PauseType.SMALL
@@ -68,26 +65,27 @@ class PaceAnalysis(BaseMetric):
         return TurnTransition(duration_seconds=pause_ms / 1000,
                               pause_category=pause_type)
 
-    def _analyze_all_transitions(self, segments: list[Segment]) -> list[TurnTransition]:
+    def _analyze_all_pauses(self, segments: list[Segment]) -> list[TurnTransition]:
         transitions = []
         for i in range(1, len(segments)):
             prev = segments[i - 1]
             curr = segments[i]
-            transition = self._calculate_transition(prev, curr)
+            transition = self._calculate_pause(prev, curr)
             transitions.append(transition)
 
         return transitions
 
-    def _generate_pace_trends(self, segments: list[Segment], window_seconds: int = 60, step_seconds: int = 30) -> list[PaceTrendPoint]:
+    def _generate_pace_trends(self, segments: list[Segment], window_seconds: int = 60, step_seconds: int = 20) -> (
+            list)[PaceTrendPoint]:
         total_movie_duration_ms = segments[-1].total_ms_end
         window_ms = window_seconds * 1000
         step_ms = step_seconds * 1000
 
-        all_transitions = self._analyze_all_transitions(segments)  # pauses
+        all_transitions = self._analyze_all_pauses(segments)  # pauses
 
         current_window_end_time_ms = window_ms
         trends = []
-        while current_window_end_time_ms <= total_movie_duration_ms:
+        while True:
             # get all segments in the current window
             window_start_ms = current_window_end_time_ms - window_ms
             window_segments = [s for s in segments if s.total_ms_start >= window_start_ms and s.total_ms_end <= current_window_end_time_ms]
@@ -97,8 +95,10 @@ class PaceAnalysis(BaseMetric):
                                                                                 all_transitions, window_start_ms,
                                                                                 current_window_end_time_ms)
             trends.append(curr_pace_trend_point)
+            if current_window_end_time_ms >= total_movie_duration_ms:  # have reached the very end of the movie
+                break
 
-            current_window_end_time_ms += step_ms
+            current_window_end_time_ms = min(total_movie_duration_ms, current_window_end_time_ms + step_ms)
 
         return trends
 
