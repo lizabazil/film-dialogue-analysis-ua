@@ -74,6 +74,19 @@ class WordFrequency(BaseModel):
     count: int
 
 
+class PartOfSpeechUsage(BaseModel):
+    gender: str
+    part_of_speech: str
+    percentage: float
+
+
+class TfIdf(BaseModel):
+    word: str
+    score: float
+    count: int
+    gender: str
+
+
 class SpeakerLexicon(BaseModel):
     top_man_lemmas: list[WordFrequency]
     top_woman_lemmas: list[WordFrequency]
@@ -81,6 +94,9 @@ class SpeakerLexicon(BaseModel):
     top_nouns_all_genders: list[WordFrequency]
     top_verbs_all_genders: list[WordFrequency]
     top_adjectives_all_genders: list[WordFrequency]
+
+    pos_usage_by_genders: list[PartOfSpeechUsage]
+    tf_idf_by_genders: list[TfIdf]
 
 
 class MovieAnalysisReport(BaseModel):
