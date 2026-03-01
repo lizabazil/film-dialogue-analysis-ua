@@ -16,9 +16,11 @@ import {MetadataSmallCard} from "./MetadataSmallCard.jsx";
 import {BubbleIndicator} from "./BubbleIndicator.jsx";
 import {LegendDetail} from "./LegendDetail.jsx";
 import {DonutLegendItem} from "./DonutLegendItem.jsx";
-import {SpeechComplexity} from "./ComplexityCard.jsx";
+import {GenderInsights} from "./ComplexityCard.jsx";
 import {PaceAreaChart} from "./PaceAreaChart.jsx";
 import {PaceCard} from "./PaceCard.jsx";
+import {GrammarDistribution} from "./GrammarDistribution.jsx";
+import {GenderMarkers} from "./GenderMarkers.jsx";
 
 
 export function StatsDashboard({data}) {
@@ -46,6 +48,8 @@ export function StatsDashboard({data}) {
     const nouns = speaker_lexicon?.top_nouns_all_genders || [];
     const verbs = speaker_lexicon?.top_verbs_all_genders || [];
     const adjectives = speaker_lexicon?.top_adjectives_all_genders || [];
+
+    const bechdel = stats?.bechdel_test || {passed_bechdel_test: false, passed_points: 0};
 
 
     const colors = {
@@ -247,7 +251,7 @@ export function StatsDashboard({data}) {
                             </Center>
 
                             <Paper withBorder radius="lg" p="md" bg="gray.0">
-                                <Text size="sm" fw={600} ta="center">Стать із більшої кількістю
+                                <Text size="sm" fw={600} ta="center">Стать із більшою кількістю
                                     реплік: {manReplicas > womanReplicas ? "Чоловіча" : "Жіноча"}</Text>
                             </Paper>
                         </Stack>
@@ -256,10 +260,20 @@ export function StatsDashboard({data}) {
             </Grid>
 
 
-            {/* boxes with average words per replica for each gender */}
+            {/* boxes with average words per replica for each gender and Bechdel test */}
             <Box mt="xl" mb="xl">
-                <Title order={4} mb="md" ml="md" fw={700}>Аналіз довжини реплік</Title>
-                <SpeechComplexity manMlu={avgWordsPerReplicaMan} womanMlu={avgWordsPerReplicaWoman}/>
+                <Group mb="md" ml="md" justify="space-between">
+                    <Stack gap={0}>
+                        <Title order={4} fw={800} c="dark.4">Гендерні особливості мовлення</Title>
+                        <Text size="xs" c="dimmed" fw={500}>Аналіз якості діалогів та красномовності</Text>
+                    </Stack>
+                </Group>
+
+                <GenderInsights
+                    manMlu={avgWordsPerReplicaMan}
+                    womanMlu={avgWordsPerReplicaWoman}
+                    bechdel={bechdel}
+                />
             </Box>
 
             {/* 3. most common words by gender */}
@@ -269,11 +283,20 @@ export function StatsDashboard({data}) {
                 labelPosition="center"
             />
 
+            <GrammarDistribution
+                stats={speaker_lexicon?.pos_usage_by_genders || []}
+            />
+
+            <GenderMarkers
+                data={speaker_lexicon?.tf_idf_by_genders}
+            />
+
             <Box mt="xl" mb="xl">
                 <Group mb="md" ml="md" justify="space-between">
                     <Stack gap={0}>
                         <Title order={4} fw={700}>Найбільш вживані леми</Title>
-                        <Text size="xs" c="dimmed">Топ слів за частотою використання</Text>
+                        <Text size="xs" c="dimmed">Найвживаніші слова (до уваги беруться іменники, дієслова,
+                            прикметники, прислівники та власні назви)</Text>
                     </Stack>
                 </Group>
             </Box>

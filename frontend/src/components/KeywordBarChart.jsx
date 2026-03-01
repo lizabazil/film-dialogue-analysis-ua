@@ -2,7 +2,7 @@ import {Group, Paper, Progress, Stack, Text, ThemeIcon, Center} from "@mantine/c
 
 
 export function KeywordBarChart({title, keywords, baseColor, icon: Icon}) {
-    const slicedKeywords = keywords?.slice(0, 10) || [];
+    const slicedKeywords = keywords?.slice(0, 20) || [];
     const maxCount = slicedKeywords.length > 0 ? Math.max(...slicedKeywords.map(k => k.count)) : 1;
     const totalItems = slicedKeywords.length;
 

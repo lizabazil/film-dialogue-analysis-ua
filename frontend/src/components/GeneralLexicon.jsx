@@ -14,7 +14,7 @@ export function GeneralLexicon({nouns, verbs, adjectives}) {
             <Group mb="md" ml="md" justify="space-between">
                 <Stack gap={0}>
                     <Title order={4} fw={700}>Загальний лексикон фільму</Title>
-                    <Text size="xs" c="dimmed">Розподіл за частинами мови</Text>
+                    <Text size="xs" c="dimmed">Розподіл за обраними частинами мови</Text>
                 </Stack>
             </Group>
 
