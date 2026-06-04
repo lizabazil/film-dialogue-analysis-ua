@@ -3,17 +3,15 @@ import ReactDOM from 'react-dom/client'
 import { MantineProvider, createTheme } from '@mantine/core';
 import App from './App.jsx'
 
-// Імпортуємо обов'язкові стилі Mantine
 import '@mantine/core/styles.css';
 import '@mantine/dropzone/styles.css';
 
-// Створюємо тему, схожу на твої скріншоти
 const theme = createTheme({
   fontFamily: 'Inter, sans-serif',
-  primaryColor: 'violet', // Фіолетовий акцент як на скріншоті
-  defaultRadius: 'md',    // Заокруглені кути
+  primaryColor: 'violet',
+  defaultRadius: 'md',
   shadows: {
-    md: '0 4px 20px rgba(0, 0, 0, 0.05)', // М'яка тінь
+    md: '0 4px 20px rgba(0, 0, 0, 0.05)',
   },
 });
 

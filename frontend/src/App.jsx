@@ -27,6 +27,20 @@ function AppContent() {
   const [error, setError] = useState(null);
 
   const handleFileSelect = async (file) => {
+    const maxFileSize = 1024 * 1024 * 1024 * 20; // 7 gb
+    if (file.size > maxFileSize) {
+      setError(`Файл занадто великий. Максимальний розмір - 7 GB. Розмір завантаженого файлу: ${( file.size / (1024 ** 3)).toFixed(2)} GB.`);
+      return;
+    }
+
+    // handle file extension format
+    const allowedExtensions = ['mp4', 'mkv', 'avi'];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    if (!allowedExtensions.includes(fileExtension)) {
+      setError(`Заданий формат файлу не підтримується. Підтримуються формати: ${allowedExtensions.join(', ')}.`);
+      return;
+    }
+
     setAnalysisResult(null);
     setError(null);
     setUploadedFile(file);

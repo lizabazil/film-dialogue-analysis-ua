@@ -120,7 +120,6 @@ export const PaceAreaChart = ({graph}) => {
                     }}
                 >
                     <Stack gap={8}>
-                        {/* Таймкод та Тип репліки */}
                         <Group justify="apart" wrap="nowrap">
                             <Text fw={700} size="xs" style={{color: colors.text, letterSpacing: '0.5px'}}>
                                 {formatTime(hoveredPoint.data.timestamps_total_ms)}
@@ -145,7 +144,6 @@ export const PaceAreaChart = ({graph}) => {
 
                         <Divider variant="dashed" color="#F1F3F5"/>
 
-                        {/* Основна статистика */}
                         <Stack gap={4}>
                             <Group justify="apart">
                                 <Text size="10px" fw={700} c="dimmed">СЛІВ У ВІКНІ</Text>
@@ -184,7 +182,6 @@ export const PaceAreaChart = ({graph}) => {
                 </Paper>
             )}
 
-            {/* SVG graph */}
             <svg
                 ref={svgRef}
                 viewBox={`0 0 ${width} ${height}`}
@@ -201,7 +198,6 @@ export const PaceAreaChart = ({graph}) => {
                 </defs>
 
                 {gridLines}
-
                 <path d={areaPath} fill="url(#gradientPace)"/>
                 <path d={linePath} fill="none" stroke="#228be6" strokeWidth="2" strokeLinejoin="round"/>
 

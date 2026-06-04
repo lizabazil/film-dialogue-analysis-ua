@@ -1,10 +1,9 @@
 import { useRef } from 'react';
-import { Text, Group, Button, rem, useMantineTheme } from '@mantine/core';
+import { Text, Group, Button, rem } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { IconCloudUpload, IconX, IconDownload } from '@tabler/icons-react';
 
 export function UploadArea({ onFileSelected }) {
-  const theme = useMantineTheme();
   const openRef = useRef(null);
 
   return (
@@ -15,8 +14,8 @@ export function UploadArea({ onFileSelected }) {
         openRef={openRef}
         onDrop={(files) => onFileSelected(files[0])} // handle first file selection
         onReject={(files) => console.log('rejected files', files)}
-        maxSize={7 * 1024 ** 3} // allow files up to 7 GB
-        accept={[MIME_TYPES.mp4, 'video/x-matroska', 'video/avi']}
+        //maxSize={7 * 1024 ** 3} // allow files up to 7 GB
+        //accept={[MIME_TYPES.mp4, 'video/x-matroska', 'video/avi']}
         radius="lg"
         styles={{
             root: {
@@ -48,17 +47,17 @@ export function UploadArea({ onFileSelected }) {
 
           <div>
             <Text size="xl" inline>
-              Drag movie file here or click to select
+              Перетягніть файл сюди або натисніть, щоб обрати
             </Text>
             <Text size="sm" c="dimmed" inline mt={7}>
-              Supports: MP4, MKV, AVI (Max 7GB)
+              Підтримує формати: MP4, MKV, AVI (Max 7GB)
             </Text>
           </div>
         </Group>
       </Dropzone>
 
       <Button size="md" radius="xl" mt="xl" onClick={() => openRef.current?.()}>
-        Select File from Computer
+        Обрати файл
       </Button>
     </div>
   );

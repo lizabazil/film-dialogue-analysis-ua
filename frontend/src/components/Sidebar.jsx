@@ -2,7 +2,7 @@ import { Stack, Tooltip, UnstyledButton, rem } from '@mantine/core';
 import { IconFileUpload, IconGraph } from '@tabler/icons-react';
 import {useLocation, useNavigate} from "react-router-dom";
 
-function NavbarLink({ icon: Icon, label, active, onClick }) {
+function NavbarLink({icon: Icon, label, active, onClick }) {
   return (
     <Tooltip label={label} position="right" transitionProps={{ duration: 0 }}>
       <UnstyledButton
@@ -16,7 +16,7 @@ function NavbarLink({ icon: Icon, label, active, onClick }) {
           justifyContent: 'center',
           color: active ? 'var(--mantine-color-violet-7)' : 'var(--mantine-color-gray-7)',
           backgroundColor: active ? 'var(--mantine-color-violet-0)' : 'transparent',
-          transition: 'all 0.2s ease', // Soft UI smooth transition
+          transition: 'all 0.2s ease',
         }}
       >
         <Icon style={{ width: rem(24), height: rem(24) }} stroke={1.5} />

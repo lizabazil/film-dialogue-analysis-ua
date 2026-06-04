@@ -1,5 +1,5 @@
 import {
-    Grid, Paper, Text, Group, rem, Code,
+    Grid, Paper, Text, Group, rem,
     Title, Stack, Box, ThemeIcon, SimpleGrid, Center, RingProgress, Divider, Badge, Tooltip, ActionIcon
 } from '@mantine/core';
 import {
@@ -37,7 +37,7 @@ export function StatsDashboard({data}) {
     const womanPercent = Math.round((womanMins / totalDurationMinutes) * 100);
     const manPercent = Math.round((manMins / totalDurationMinutes) * 100);
     const silenceMins = Math.max(0, totalDurationMinutes - womanMins - manMins);
-    const silencePercent = Math.round((silenceMins / totalDurationMinutes) * 100);
+    const silencePercent = 100 - womanPercent - manPercent;
 
     const manRepPercent = totalReplicas > 0 ? Math.round((manReplicas / totalReplicas) * 100) : 0;
     const womanRepPercent = totalReplicas > 0 ? Math.round((womanReplicas / totalReplicas) * 100) : 0;
@@ -198,11 +198,11 @@ export function StatsDashboard({data}) {
                             </Center>
 
                             <SimpleGrid cols={3} pt="md">
-                                <LegendDetail label="Чоловіча стать" value={`${manMins.toFixed(1)} хв`}
+                                <LegendDetail label="Чоловіча стать" value={`${manMins.toFixed(0)} хв`}
                                               color={colors.man}/>
-                                <LegendDetail label="Жіноча стать" value={`${womanMins.toFixed(1)} хв`}
+                                <LegendDetail label="Жіноча стать" value={`${womanMins.toFixed(0)} хв`}
                                               color={colors.woman}/>
-                                <LegendDetail label="Тиша" value={`${silenceMins.toFixed(1)} хв`}
+                                <LegendDetail label="Тиша" value={`${silenceMins.toFixed(0)} хв`}
                                               color={colors.silence}/>
                             </SimpleGrid>
                         </Stack>
@@ -332,13 +332,6 @@ export function StatsDashboard({data}) {
                     verbs={verbs}
                     adjectives={adjectives}
                 />
-            </Box>
-
-            <Box mt={50} p="md">
-                <Title order={5} mb="sm" c="dimmed">Debug Inspector:</Title>
-                <Code block color="gray" style={{maxHeight: '500px', overflow: 'auto'}}>
-                    {JSON.stringify(data, null, 2)}
-                </Code>
             </Box>
         </Box>
     );
