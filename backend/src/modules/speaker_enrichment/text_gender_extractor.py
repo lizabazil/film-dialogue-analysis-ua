@@ -248,7 +248,6 @@ class TextGenderExtractor:
     def _has_prepositional_child(sentence: TokenList, token_id: int) -> bool:
         """
         Checks if the token (identified by token_id) has any dependent child that acts as a preposition (deprel='case').
-
         Example: In "Я з квіткою.", 'квіткою' is the head, and 'з' is the child with deprel='case'.
 
         Args:

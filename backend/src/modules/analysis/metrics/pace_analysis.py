@@ -8,6 +8,11 @@ from src.modules.analysis.schemas import (SegmentPaceMetrics, TurnTransition, Pa
 
 class PaceAnalysis(BaseMetric):
     def calculate(self, segments: list[Segment], **kwargs) -> PaceGlobalAnalysis:
+        movie_duration_seconds = kwargs.get("movie_duration_in_seconds")
+        movie_duration_ms = None
+        if movie_duration_seconds is not None:
+            movie_duration_ms = movie_duration_seconds * 1000
+
         all_replicas_type = [self.classify_replica(s).category for s in segments]
         total_monologue_replicas = sum(1 for r in all_replicas_type if r == ReplicaType.MONOLOGUE)
 
@@ -16,14 +21,13 @@ class PaceAnalysis(BaseMetric):
         total_long_pauses = sum(1 for p in all_transitions_type if p == PauseType.LONG_PAUSE)
         total_small_pauses = sum(1 for p in all_transitions_type if p == PauseType.SMALL)
 
-        pace_trends = self._generate_pace_trends(segments)
+        pace_trends = self._generate_pace_trends(segments, total_movie_duration_ms=movie_duration_ms)
         return PaceGlobalAnalysis(
             total_monologues=total_monologue_replicas,
             total_long_pauses=total_long_pauses,
             total_instant_responses=total_small_pauses,
             pace_graph=pace_trends
         )
-        pass
 
     @staticmethod
     def classify_replica(segment: Segment) -> SegmentPaceMetrics:
@@ -77,9 +81,12 @@ class PaceAnalysis(BaseMetric):
 
         return transitions
 
-    def _generate_pace_trends(self, segments: list[Segment], window_seconds: int = 60, step_seconds: int = 20) -> (
+    def _generate_pace_trends(self, segments: list[Segment], window_seconds: int = 60, step_seconds: int = 20,
+                              total_movie_duration_ms: int = None) -> (
             list)[PaceTrendPoint]:
-        total_movie_duration_ms = segments[-1].total_ms_end
+        if total_movie_duration_ms is None:
+            total_movie_duration_ms = segments[-1].total_ms_end
+
         window_ms = window_seconds * 1000
         step_ms = step_seconds * 1000
 

@@ -19,6 +19,8 @@ class NlpAligner:
 
         Returns:
             list[Segment]: The list of segments, enriched with NLP data in `segment.nlp_data`.
+        Raises:
+            ValueError: In case of mismatched text.
         """
         count = 0
         total_udpipe_sentences = len(nlp_sentences)
@@ -37,7 +39,6 @@ class NlpAligner:
 
                     count += 1
                 else:
-                    print(f"WARNING: text is not matching!")
-                    break
+                    raise ValueError(f"Alignment of the text has failed.")
 
         return segments

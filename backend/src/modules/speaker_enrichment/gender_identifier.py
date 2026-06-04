@@ -3,7 +3,7 @@ from src.modules.speaker_enrichment.audio_gender_extractor import AudioGenderExt
 from src.modules.speaker_enrichment.visual_gender_extractor import VisualGenderExtractor
 from src.modules.speaker_enrichment.text_gender_extractor import TextGenderExtractor
 from src.utils.segment import Segment
-from src.modules.post_processing.normalizers import SegmentNormalizer
+from src.modules.preprocessing.normalizers import SegmentNormalizer
 from collections import Counter
 import json
 from src.utils.gender_extractor_return_type import GenderExtractorReturnType
@@ -48,12 +48,8 @@ class GenderEnricher:
             neighbors = self._sort_segments_by_time_start(neighbors)
             same_speaker_segments_into_one = self.segment_normalizer.merge_close_segments(
                 segments=same_speaker_segments, gap_duration_in_seconds=float('inf'))
-            if len(same_speaker_segments_into_one) != 1:
-                raise ValueError(f"Size of segments by the same speaker list MUST 1, but it's current value is "
-                                 f"{len(same_speaker_segments_into_one)}")
 
             the_whole_segment_to_analyze = same_speaker_segments_into_one[0]
-
             audio_result = self.audio_gender_extractor.predict_gender(video_path,
                                                                       segment=the_whole_segment_to_analyze)
             visual_result = self.visual_gender_extractor.predict_gender(video_path, segment=the_whole_segment_to_analyze)
@@ -187,7 +183,6 @@ class GenderEnricher:
                 if local_index >= total_segments:
                     break
                 curr_segment = all_segments[local_index]
-                #max_index_of_the_target_speaker = local_index
 
         return result_segments, max_index_of_the_target_speaker
 

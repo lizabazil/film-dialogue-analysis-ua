@@ -19,16 +19,16 @@ class Segment:
                  speech: str = "",
                  gender: str = "unknown"):
         self.speaker_id = speaker_id
-        self.start_h = start_h  # hour
-        self.start_m = start_m  # minute
-        self.start_s = start_s   # second
-        self.start_ms = start_ms  # millisecond
+        self.start_h = start_h
+        self.start_m = start_m
+        self.start_s = start_s
+        self.start_ms = start_ms
         self.end_h = end_h
         self.end_m = end_m
         self.end_s = end_s
         self.end_ms = end_ms
         self.speech = speech
-        self.gender = gender   # 'female', 'male' or 'unknown'
+        self.gender = gender
         self.nlp_data: Optional[list[TokenList]] = None
 
     @property
@@ -77,6 +77,7 @@ class Segment:
         return None
 
     def set_start_time(self, hour: int, minute: int, second: int, millisecond: int) -> None:
+        self._validate_time(hour, minute, second, millisecond)
         self.start_h = hour
         self.start_m = minute
         self.start_s = second
@@ -84,6 +85,7 @@ class Segment:
         return None
 
     def set_end_time(self, hour: int, minute: int, second: int, millisecond: int) -> None:
+        self._validate_time(hour, minute, second, millisecond)
         self.end_h = hour
         self.end_m = minute
         self.end_s = second
@@ -114,3 +116,13 @@ class Segment:
                 f"SPEECH: {self.speech}\n"
                 f"GENDER: {self.gender}\n"
                 f"NLP_DATA: {self.nlp_data}\n")
+
+    def _validate_time(self, hour: int, minute: int, second: int, millisecond: int):
+        if any(time < 0 for time in [hour, minute, second, millisecond]):
+            raise ValueError(f"Time value cannot be less 0: {hour}:{minute}:{second}:{millisecond}")
+        if not (0 <= minute <= 59):
+            raise ValueError(f"Incorrect minute value: {minute}")
+        if not (0 <= second <= 59):
+            raise ValueError(f"Incorrect second value: {second}")
+        if not (0 <= millisecond <= 999):
+            raise ValueError(f"Incorrect millisecond value: {millisecond}")

@@ -11,7 +11,6 @@ class SpeakerLexicon(BaseMetric):
         all_parts_of_speech_and_propn = [POS_NOUN, POS_ADJECTIVE, POS_VERB, POS_ADVERB, POS_PROPER_NOUN, POS_PRON, POS_NUM]
         genders = [WOMAN_GENDER, MAN_GENDER]
 
-        # getting nouns, adjectives, verbs, adverbs, proper nouns, pronouns, numerical (independent parts of speech)
         part_of_speech = [POS_NOUN, POS_ADJECTIVE, POS_VERB, POS_ADVERB, POS_PROPER_NOUN]
         return {
             "top_man_lemmas": self._get_most_common_lemmas(segments, part_of_speech, MAN_GENDER),
@@ -48,21 +47,15 @@ class SpeakerLexicon(BaseMetric):
     def _get_percentage_of_part_of_speech_by_gender(self, segments: list[Segment], part_of_speech: str, gender: str) -> float:
         specific_pos_data = self._get_most_common_lemmas(segments, [part_of_speech], gender)
         count_given_pos = sum(item["count"] for item in specific_pos_data)
-
-        # 100% will a sum of nouns, adjectives, adverbs, proper nouns, pronouns, numerical
         all_pos = [POS_NOUN, POS_ADJECTIVE, POS_VERB, POS_ADVERB, POS_PROPER_NOUN, POS_PRON, POS_NUM]
         all_words_data = self._get_most_common_lemmas(segments, all_pos, gender)
         total_words_count = sum(item['count'] for item in all_words_data)
-
         if total_words_count == 0:
             return 0.0
-
         return (count_given_pos / total_words_count) * 100
 
     def _get_gender_tf_idf(self, segments: list[Segment]) -> list[TfIdf]:
         meaningful_pos = [POS_NOUN, POS_ADJECTIVE, POS_VERB, POS_ADVERB, POS_PROPER_NOUN, POS_PRON, POS_NUM]
-
-        # will be basically two documents: for women and men
         documents = {WOMAN_GENDER: [], MAN_GENDER: []}
         for seg in segments:
             curr_gender = seg.gender
@@ -104,5 +97,4 @@ class SpeakerLexicon(BaseMetric):
                           )
                 )
 
-        # sort list by 'score' field
         return sorted(tf_idf_by_genders, key=lambda x: x.score, reverse=True)

@@ -33,10 +33,10 @@ class AudioFileUtils:
             "-i", video_path,
             '-vn',
             '-acodec', 'libmp3lame',
-            '-ar', '16000',  # to 16 kHz,
+            '-ar', '16000',
             '-b:a', '64k',
-            '-ac', '1',  # to one audio channel
-            '-y',  # overwrite output file if exists
+            '-ac', '1',
+            '-y',
             audio_path
         ]
         try:
@@ -67,13 +67,10 @@ class AudioFileUtils:
             None
         """
         audio = AudioSegment.from_file(input_file_path, format="mp3")
-
         start = ((start_h * 3600 + start_min * 60) + start_sec) * 1000 + start_ms
         end = ((end_h * 3600 + end_min * 60) + end_sec) * 1000 + end_ms
-
         mid_seconds = audio[start:end]
         mid_seconds.export(output_file_path, format="mp3")
-        #print("New Audio file is created and saved")
         return None
 
     @staticmethod

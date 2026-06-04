@@ -1,4 +1,5 @@
 import os
+import gc
 
 from pyannote.audio import Pipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 class PyannoteDiarizer:
     def __init__(self, config: dict):
         hf_token = self._load_hugging_face_token(config)
+        self.diarization_model_name = config.get("diarization_model_name", "pyannote/speaker-diarization-3.1")
 
         try:
             torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
@@ -22,11 +24,11 @@ class PyannoteDiarizer:
                 Resolution
             ])
             self.pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
+                self.diarization_model_name,
                 use_auth_token=hf_token
             )
             self.device = torch.device(
-                "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+                "cuda" if torch.cuda.is_available() else "cpu")
             self.pipeline.to(self.device)
         except Exception as e:
             print(f"CRITICAL ERROR initializing pipeline: {e}")
@@ -79,19 +81,13 @@ class PyannoteDiarizer:
             """
         if self.pipeline is None:
             return None
-
         try:
             with ProgressHook() as hook:
                 waveform, sample_rate = torchaudio.load(audio_path)
-                #default_parameters = self.pipeline.parameters(instantiated=True)
-                #for param, value in default_parameters.items():
-                    #print(f"{param}: {value}")
-
                 diarization = self.pipeline({"waveform": waveform,
                                              "sample_rate": sample_rate},
                                             hook=hook,
-                                            min_speakers=2,
-                                            max_speakers=20)
+                                            )
 
                 # post-process diarization result to increase its quality
                 diarization = self._filter_short_segments(diarization)
@@ -122,3 +118,13 @@ class PyannoteDiarizer:
                 cleaned_annotation[segment] = speaker
         return cleaned_annotation
 
+    def cleanup(self):
+        if hasattr(self, 'pipeline') and self.pipeline is not None:
+            self.pipeline.to(torch.device("cpu"))
+
+            del self.pipeline
+            self.pipeline = None
+
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

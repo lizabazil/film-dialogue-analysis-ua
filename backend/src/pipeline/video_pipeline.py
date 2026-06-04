@@ -4,8 +4,8 @@ from src.modules.transcription.diarizer import PyannoteDiarizer
 from src.modules.transcription.diarization_io import DiarizationIO
 from src.modules.transcription.whisper_transcriber import WhisperTranscriber
 from src.modules.transcription.transcript_io import TranscriptIO
-from src.modules.post_processing.whisper_transcript_cleaner import WhisperTranscriptCleaner
-from src.modules.post_processing.normalizers import SegmentNormalizer
+from src.modules.preprocessing.whisper_transcript_cleaner import WhisperTranscriptCleaner
+from src.modules.preprocessing.normalizers import SegmentNormalizer
 from src.modules.nlp.nlp_udpipe_parser import NLPUDPipeParser
 from src.modules.speaker_enrichment.gender_identifier import GenderEnricher
 from src.utils.audio_file_utils import AudioFileUtils
@@ -14,15 +14,17 @@ import yaml
 from pathlib import Path
 from src.utils.segment import Segment
 from src.modules.analysis.engine import AnalysisEngine
+from pyannote.core import Annotation
 
 
 class VideoPipeline:
     def __init__(self, config: dict):
         self.config = config
-        #self.output_dir = Path(config.get(...))  # path for storing caches
+        relative_working_path = self.config.get("storage", {}).get("working_files_dir", "data/working_files")
 
-        # TODO: temporal decision
-        self.output_dir = Path("/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/pipeline")
+        # with current working directory
+        self.output_dir = Path.cwd() / relative_working_path
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self._diarizer = None
         self._transcriber = None
@@ -34,21 +36,28 @@ class VideoPipeline:
         self._nlp_udpipe_parser = None
         self._gender_enricher = None
         self.analysis_engine = AnalysisEngine()
-        print("VideoPipeline init done.")
 
     @property
     def diarizer(self):
         if self._diarizer is None:
             self._diarizer = PyannoteDiarizer(self.config)
-            print("Pyannote loaded.")
         return self._diarizer
+
+    def unload_diarizer(self):
+        if self._diarizer is not None:
+            self._diarizer.cleanup()
+            self._diarizer = None
 
     @property
     def transcriber(self):
         if self._transcriber is None:
             self._transcriber = WhisperTranscriber(self.config)
-            print("Whisper transcriber loaded.")
         return self._transcriber
+
+    def unload_transcriber(self):
+        if self._transcriber is not None:
+            self._transcriber.cleanup()
+            self._transcriber = None
 
     @property
     def gender_enricher(self):
@@ -76,20 +85,24 @@ class VideoPipeline:
         AudioFileUtils.extract_audio_from_video(video_path, full_audio_path)
 
         annotation = self.diarizer.diarize(full_audio_path)
+        self.unload_diarizer()
+
         # save checkpoint with diarization
         self.diarization_io.save_diarization(annotation, f"{self.output_dir}/diarization.txt")
         # whisper
         segments_after_whisper = self._generate_transcript_from_annotation(annotation, full_audio_path)
+        self.unload_transcriber()
+
         # save checkpoint: save raw (not cleaned) transcript into txt file
         self.transcript_io_manager.save(segments_after_whisper, paths.get("transcript"))
         # and then:
         nlp_and_gender_annotated_segments = self._process_text_pipeline(segments_after_whisper, video_path,
                                                                         paths.get("udpipe"))
 
-        # gender_annotated_segments will be given to the analysis module
-        # TODO: add calling analysis module
+        analysis_report = self.analysis_engine.run_full_analysis(nlp_and_gender_annotated_segments, video_path)
+        return analysis_report
 
-    def _generate_transcript_from_annotation(self, annotation, full_audio_path) -> list[Segment]:
+    def _generate_transcript_from_annotation(self, annotation: Annotation, full_audio_path: str) -> list[Segment]:
         full_audio_numpy, sr = AudioFileUtils.load_audio_as_mono_numpy(full_audio_path)
 
         segments = []
@@ -105,14 +118,7 @@ class VideoPipeline:
             start_h, start_m, start_s, start_ms = TimeUtils.convert_seconds_to_proper_format(segment.start)
             end_h, end_m, end_s, end_ms = TimeUtils.convert_seconds_to_proper_format(segment.end)
 
-            #cut audio
-            output_cut_audio = "/home/liza/PycharmProjects/film-dialogue-analysis-ua/data/pipeline/batko.mkv"
-            AudioFileUtils.cut_audio_segment(full_audio_path, output_cut_audio, start_h, start_m,
-                      start_s, start_ms, end_h, end_m, end_s, end_ms)
-            #give audio to Whisper
-            #speech = self.transcriber.get_whisper_transcription(output_cut_audio)
-
-            speech = self.transcriber.get_whisper_transcription_from_array(audio_segment_array, sample_rate=sr)
+            speech = self.transcriber.get_transcription(audio_segment_array, sample_rate=sr)
             segment = Segment(speaker, start_h, start_m, start_s, start_ms,
                               end_h, end_m, end_s, end_ms, speech.strip())
             segments.append(segment)
@@ -120,22 +126,20 @@ class VideoPipeline:
         return segments
 
     def run_with_existing_transcript(self, transcript_path: str, video_path: str, udpipe_cache_file_path: str = None):
-        # parsing (transcipt io)
         if not os.path.exists(transcript_path):
             raise FileNotFoundError(f"Transcript file {transcript_path} can not be found.")
 
         parsed_segments_from_transcript, with_gender_notes = self.transcript_io_manager.parse(transcript_path)
-        # and then add genders in case it is not there yet
+        # add genders in case it is not there yet
         nlp_data_and_gender_annotated_segments = (
             self._process_text_pipeline(parsed_segments_from_transcript, video_path, udpipe_cache_file_path,
-                                        with_genders_already=with_gender_notes))
+                                        with_genders_already=with_gender_notes, clean_replicas=False))
 
-        # gender_annotated_segments will be given to the analysis module
         analysis_report = self.analysis_engine.run_full_analysis(nlp_data_and_gender_annotated_segments, video_path)
         return analysis_report
 
     def _process_text_pipeline(self, segments: list, video_path: str, udpipe_file_path: str | None,
-                               with_genders_already: bool = False, from_whisper: bool = False) -> list[Segment]:
+                               with_genders_already: bool = False, clean_replicas: bool = True) -> list[Segment]:
         """
 
         Args:
@@ -152,8 +156,10 @@ class VideoPipeline:
         # if it does not exist, then udpipe will run its pipeline and save its result to the given file
 
         # 1. cleaner
-        if from_whisper:
+        # if there was existing transcript - then no cleaning here
+        if clean_replicas:
             segments = self.cleaner.clean(segments)
+        self.transcript_io_manager.save(segments, paths.get("transcript"))
 
         # 2. normalizer
         normalized_segments = self.normalizer.normalize(segments)
@@ -166,7 +172,6 @@ class VideoPipeline:
 
         # 4. gender enricher and saving to the json lines file
         if not with_genders_already:
-            print('Starting annotating segments...')
             gender_annotated_segments = self.gender_enricher.annotate_segments(video_path,
                                                                                segments_with_linguistic_features,
                                                                                paths.get("final_jsonl"))
@@ -201,5 +206,6 @@ class VideoPipeline:
             # for saving result to the final json lines
             "final_jsonl": self.output_dir / f"{stem}_final.jsonl",
             # for audio path (made from video)
-            "full_audio": self.output_dir / f"{stem}_full_audio.mp3"
+            "full_audio": self.output_dir / f"{stem}_full_audio.mp3",
+            "parsed_transcript": self.output_dir / f"{stem}_parsed_transcript.txt"
         }

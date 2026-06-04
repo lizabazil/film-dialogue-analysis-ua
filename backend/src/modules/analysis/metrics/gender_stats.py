@@ -1,10 +1,10 @@
 from src.utils.segment import Segment
 from .base import BaseMetric
-from src.modules.post_processing.normalizers import SegmentNormalizer
+from src.modules.preprocessing.normalizers import SegmentNormalizer
 from src.modules.analysis.metrics.pace_analysis import PaceAnalysis
 
 
-class GenderStatsMetric(BaseMetric):
+class GenderStats(BaseMetric):
     def __init__(self):
         self.segment_normalizer = SegmentNormalizer()
 
@@ -80,11 +80,6 @@ class GenderStatsMetric(BaseMetric):
         """
         Forms dialogue groups, based on the gap between replicas. If the gap >= 'gap_seconds', then it is treated
         as the start of a new dialogue, which will be processed independently later in the Bechdel test.
-        Args:
-            segments:
-
-        Returns:
-
         """
         if not segments:
             return []
@@ -96,7 +91,7 @@ class GenderStatsMetric(BaseMetric):
             curr_segment_start_ms = seg.total_ms_start
             prev_segment_end_ms = current_group[-1].total_ms_end
             ms_difference = curr_segment_start_ms - prev_segment_end_ms
-            seconds_difference = ms_difference // 1000  # floor division
+            seconds_difference = ms_difference // 1000
 
             if seconds_difference <= gap_seconds:  # current segment will be added to the current group
                 current_group.append(seg)
@@ -115,11 +110,6 @@ class GenderStatsMetric(BaseMetric):
         To filter those groups of segments, where at least two women speak to each other (in other words, their
         replicas are located right next to each other). Those groups are merged (so the neighboring replicas by
         the same speaker are merged).
-        Args:
-            segments_groups:
-
-        Returns:
-
         """
         if not segments_groups:
             return []
@@ -144,9 +134,6 @@ class GenderStatsMetric(BaseMetric):
         Args:
             segment_groups: Must be with replicas already merged (so the neighboring replicas by the same speaker are
             already in the same segment).
-
-        Returns:
-
         """
         if not segment_groups:
             return []
@@ -202,14 +189,18 @@ class GenderStatsMetric(BaseMetric):
                 for token in sentence:
                     lemma = token.get("lemma")
                     deprel = token.get("deprel", "")
-                    feats = token.get("feats", {})
+                    feats = token.get("feats") or {}
                     token_id = token.get("id")
 
                     if lemma in male_lemmas_list:
                         return True
                     if lemma in male_pronouns_list:
-                        if feats.get("Animacy") == "Anim" and feats.get("Gender") == "Masc":
-                            return True
+                        animacy = feats.get("Animacy")
+                        gender = feats.get("Gender")
+                        # if there is animacy - check it, otherwise trust Gender info
+                        if gender == "Masc":
+                            if animacy is None or animacy == "Anim":
+                                return True
 
                     # there is a nominal subject in the sentence and it was marked as male
                     if deprel == "nsubj" and feats.get("Gender") == "Masc" and feats.get("Animacy") == "Anim":
@@ -221,5 +212,4 @@ class GenderStatsMetric(BaseMetric):
                         if token_id not in verbs_with_subjects_ids:
                             if lemma in common_human_verbs:
                                 return True
-
         return False

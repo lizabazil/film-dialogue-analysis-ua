@@ -1,37 +1,15 @@
+storage:
+  upload_dir: "data/uploads"
+  working_files_dir: "data/working_files"
+
 hugging_face_token_name: "HUGGING_FACE_TOKEN"  # for accessing Hugging Face models (e.g. pyannote)
+diarization_model_name: "pyannote/speaker-diarization-3.1"
 
 speech_to_text_model:
   whisper_model_name: "openai/whisper-large-v3"
+  target_language: "uk"
 
 speaker_enrichment:
   # models for identifying speakers' gender
   audio_model_name: "prithivMLmods/Common-Voice-Geneder-Detection"
-  #image_model_name: "IDEA-Research/grounding-dino-base"
-  image_model_name: "IDEA-Research/grounding-dino-tiny"
-
-llm_transcriber:
-  model_name: "gemini-2.5-flash" #"gemini-3-flash-preview" #"gemini-2.5-flash"  # "gemini-2.5-flash-lite" # this model will be used for creating transcripts
-  chunk_length_in_min: 8 # length of audio chunks to be sent to the LLM transcriber
-  overlap_in_min: 1    # overlap between audio chunks to avoid cutting sentences
-  api_keys_config:
-    env_variables_names:
-      - "GEMINI_API_KEY_1"
-      - "GEMINI_API_KEY_2"
-      - "GEMINI_API_KEY_3"
-      - "GEMINI_API_KEY_4"
-      - "GEMINI_API_KEY_5"
-      - "GEMINI_API_KEY_6"
-      - "GEMINI_API_KEY_7"
-      - "GEMINI_API_KEY_8"
-      - "GEMINI_API_KEY_9"
-      - "GEMINI_API_KEY_10"
-      - "GEMINI_API_KEY_11"
-      - "GEMINI_API_KEY_12"
-      - "GEMINI_API_KEY_13"
-      - "GEMINI_API_KEY_14"
-      - "GEMINI_API_KEY_15"
-      - "GEMINI_API_KEY_16"
-      - "GEMINI_API_KEY_17"
-      - "GEMINI_API_KEY_18"
-      - "GEMINI_API_KEY_19"
-      - "GEMINI_API_KEY_20"
+  image_model_name: "IDEA-Research/grounding-dino-base"

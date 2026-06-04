@@ -29,15 +29,12 @@ class AudioGenderExtractor(BasicGenderExtractor):
         self.custom_id_to_label = {"female": "woman", "male": "man"}
         self.last_given_video_path = ""
 
-        print(f"Loading Audio Gender Model on {self.device}...")
-
         try:
             self.processor = Wav2Vec2FeatureExtractor.from_pretrained(self.model_name)
             self.model = Wav2Vec2ForSequenceClassification.from_pretrained(self.model_name)
             self.model.to(self.device)
             self.model.eval()
         except Exception as e:
-            print(f"Failed to load model: {e}")
             raise e
 
         self.id2label = {
@@ -56,8 +53,6 @@ class AudioGenderExtractor(BasicGenderExtractor):
     def predict_gender(self, video_path: str, segment: Segment) -> GenderExtractorReturnType | None:
         try:
             if self.last_given_video_path != video_path:
-                print(f"Extracting full audio from video: {video_path}...")
-
                 AudioFileUtils.extract_audio_from_video(video_path, self.full_audio_path)
                 self.last_given_video_path = video_path
 
@@ -90,10 +85,8 @@ class AudioGenderExtractor(BasicGenderExtractor):
                 speech = waveform.squeeze(0)
 
             speech = speech.numpy()
-
             if len(speech) == 0:
                 return None
-
             inputs = self.processor(
                 speech,
                 sampling_rate=self.sampling_rate,
@@ -129,8 +122,4 @@ class AudioGenderExtractor(BasicGenderExtractor):
         Deletes temporary file when the instance of the class is being destroyed.
         """
         if hasattr(self, 'full_audio_path') and os.path.exists(self.full_audio_path):
-            try:
-                os.remove(self.full_audio_path)
-                print(f"Temporary file {self.full_audio_path} deleted.")
-            except Exception as e:
-                print(f"Cleanup error: {e}")
+            os.remove(self.full_audio_path)

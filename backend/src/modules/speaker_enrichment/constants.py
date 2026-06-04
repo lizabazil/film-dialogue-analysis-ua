@@ -9,7 +9,7 @@ class TokenKeys:
 class Upos:
     VERB = "VERB"
     PRON = "PRON"
-    ADJ = "ADJ"  # adjective
+    ADJ = "ADJ"
     NOUN = "NOUN"
 
 
@@ -38,10 +38,10 @@ class FeatValues:
     SING = "Sing"
 
     # cases
-    LOC = "Loc"  # locative case
-    NOM = "Nom"  # nominative case
-    INS = "Ins"  # instrumental case  (орудний)
-    GEN = "Gen"  # genitive case (родовий)
+    LOC = "Loc"
+    NOM = "Nom"
+    INS = "Ins"
+    GEN = "Gen"
 
 
 class Deprel:
