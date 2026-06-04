@@ -87,3 +87,25 @@ The system was tested and validated on a comprehensive sample of **135 Ukrainian
 * **Dialogue Distribution:** Heavy masculine dominance was observed in traditional narrative structures, reaching as high as 80% conversational control in selected top-20 films.
 * **Directorial Influence:** Data profiles revealed that female directors show a significantly narrower, more unified variance in character average replica length across all personas. Conversely, male directors exhibit broader, more volatile phrase extremes.
 * **Lexical Stereotyping:** Aggressive, action-oriented verbs (*"атакувати"*, *"вдарити"*) appeared multiple times more frequently within male dialogue profiles. Meanwhile, domestic and high-emotion terms (*"зварити"*, *"прибирати"*) heavily saturated female character speech.
+
+---
+
+### 🖥️ User Interface Preview
+
+<details>
+  <summary>📸 Click to expand web application screenshots</summary>
+  <br>
+  
+  <h4>Main Dashboard Overview</h4>
+<img src="docs/images/web_metadata.jpg" width="85%" alt="Metadata">
+
+  <h4>Movie Pace Analysis</h4>
+<img src="docs/images/web_pace.jpg" width="85%" alt="Pace">
+
+  <h4>Pard Of Speech Usage Per Gender</h4>
+<img src="docs/images/web_pos.jpg" width="85%" alt="Pos">
+
+  <h4>Replicas Stats Per Gender, Bechdel Test</h4>
+<img src="docs/images/web_replicas_stats.jpg" width="85%" alt="replicas_stats">
+
+</details>
