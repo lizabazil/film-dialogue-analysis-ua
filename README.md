@@ -108,4 +108,11 @@ The system was tested and validated on a comprehensive sample of **135 Ukrainian
   <h4>Replicas Stats Per Gender, Bechdel Test</h4>
 <img src="docs/images/web_replicas_stats.jpg" width="85%" alt="replicas_stats">
 
+  <h4>Top Nouns, Verbs, Adjectives used in Movie</h4>
+<img src="docs/images/web_nouns_adj_verbs.jpg" width="85%" alt="nouns_adj_verbs">
+
+  <h4>TF-IDF Markers per Gender</h4>
+<img src="docs/images/web_tf-idf.jpg" width="85%" alt="tf-idf_markers">
+
+
 </details>
