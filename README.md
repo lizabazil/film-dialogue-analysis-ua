@@ -82,9 +82,19 @@ Once processed, the program builds a comprehensive multi-dimensional analytical 
 
 ### Corpus Testing & Key Findings
 
-The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. Key data insights uncovered include:
+The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. Key data insights of the corpus uncovered:
 
-* **Dialogue Distribution:** Heavy masculine dominance was observed in traditional narrative structures, reaching as high as 80% conversational control in selected top-20 films.
+* **Dialogue Distribution:** Categorized the film corpus into three distinct narrative structures: male-dominated (peaking at 99% of all dialogue lines), female-dominated (peaking significantly lower at 82%), and gender-balanced profiles (within a $\pm$3% margin), uncovering a clear ceiling effect in female character representation.
+  <h4>20 Movies with Male Dominated Replicas</h4>
+<img src="docs/images/movies_with_most_male_replicas.png" width="85%" alt="Movies with most male replicas">
+
+  <h4>20 Movies with Female Dominated Replicas</h4>
+<img src="docs/images/movies_with_women_most_replicas.png" width="85%" alt="Movies with most female replicas">
+
+  <h4>20 Movies with Replica's Balance</h4>
+<img src="docs/images/movies_with_most_balance.png" width="85%" alt="Movies with most replicas balance">
+
+
 * **Directorial Influence:** Data profiles revealed that female directors show a significantly narrower, more unified variance in character average replica length across all personas. Conversely, male directors exhibit broader, more volatile phrase extremes.
 * **Lexical Stereotyping:** Aggressive, action-oriented verbs (*"атакувати"*, *"вдарити"*) appeared multiple times more frequently within male dialogue profiles. Meanwhile, domestic and high-emotion terms (*"зварити"*, *"прибирати"*) heavily saturated female character speech.
 
