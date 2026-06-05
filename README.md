@@ -1,6 +1,6 @@
 # 🎬 NLP-Based Analysis of Dialogues in Ukrainian Films
 
-An end-to-end Natural Language Processing (NLP) pipeline designed to extract, analyze, and map sociolinguistic and narrative trends for a given movie. 
+An end-to-end pipeline designed to extract, analyze, and map sociolinguistic and narrative trends for a given movie. 
 
 This system leverages multimodal data fusion (Text, Audio, Vision) to automate media analysis, tracking gender representation, dialogue dynamics, and lexical markers.
 
