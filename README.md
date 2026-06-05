@@ -82,21 +82,47 @@ Once processed, the program builds a comprehensive multi-dimensional analytical 
 
 ### Corpus Testing & Key Findings
 
-The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. Key data insights of the corpus uncovered:
+The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. The corpus distribution provied in the next visualisation (specifying amount of movies belonging to each gender and amount of movies per release year):
+<p align="center">
+  <img src="docs/images/corpus_info_genres_years_combined.png" width="70%" alt="Movie distribution">
+</p>
+
+
+Key data insights of the corpus uncovered:
 
 * **Dialogue Distribution:** Categorized the film corpus into three distinct narrative structures: male-dominated (peaking at 99% of all dialogue lines), female-dominated (peaking significantly lower at 82%), and gender-balanced profiles (within a $\pm$3% margin), uncovering a clear ceiling effect in female character representation.
-  <h4>20 Movies with Male Dominated Replicas</h4>
-<img src="docs/images/movies_with_most_male_replicas.png" width="60%" alt="Movies with most male replicas">
+  <h4 align="center">20 Movies with Male Dominated Replicas</h4>
+<p align="center">
+  <img src="docs/images/movies_with_most_male_replicas.png" width="70%" alt="Movies with most male replicas">
+</p>
 
-  <h4>20 Movies with Female Dominated Replicas</h4>
-<img src="docs/images/movies_with_women_most_replicas.png" width="60%" alt="Movies with most female replicas">
+  <h4 align="center">20 Movies with Female Dominated Replicas</h4>
+  <p align="center">
+<img src="docs/images/movies_with_women_most_replicas.png" width="70%" alt="Movies with most female replicas">
+</p>
 
-  <h4>20 Movies with Replica's Balance</h4>
-<img src="docs/images/movies_with_most_balance.png" width="60%" alt="Movies with most replicas balance">
-
+  <h4 align="center">20 Movies with Replica's Balance</h4>
+  <p align="center">
+<img src="docs/images/movies_with_most_balance.png" width="70%" alt="Movies with most replicas balance">
+</p>
 
 * **Directorial Influence:** Data profiles revealed that female directors show a significantly narrower, more unified variance in character average replica length across all personas. Conversely, male directors exhibit broader, more volatile phrase extremes.
+
+ <p align="center">
+<img src="docs/images/range_directors_plot.png" width="70%" alt="range_directors_plot">
+</p>
+
+
 * **Lexical Stereotyping:** Aggressive, action-oriented verbs (*"атакувати"*, *"вдарити"*) appeared multiple times more frequently within male dialogue profiles. Meanwhile, domestic and high-emotion terms (*"зварити"*, *"прибирати"*) heavily saturated female character speech.
+
+ <p align="center">
+<img src="docs/images/top_15_log_odds_ratio_for_verbs.png" width="70%" alt="top_15_log_odds_ratio_for_verbs">
+</p>
+  
+* **Bechdel Test:** 68,9 % movies of the corpus have passed the Bechdel Test.
+  <p align="center">
+<img src="docs/images/Bechdel_plot_summary.png" width="70%" alt="Bechdel Test">
+</p>
 
 ---
 
