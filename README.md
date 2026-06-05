@@ -86,13 +86,13 @@ The system was tested and validated on a comprehensive sample of **135 Ukrainian
 
 * **Dialogue Distribution:** Categorized the film corpus into three distinct narrative structures: male-dominated (peaking at 99% of all dialogue lines), female-dominated (peaking significantly lower at 82%), and gender-balanced profiles (within a $\pm$3% margin), uncovering a clear ceiling effect in female character representation.
   <h4>20 Movies with Male Dominated Replicas</h4>
-<img src="docs/images/movies_with_most_male_replicas.png" width="85%" alt="Movies with most male replicas">
+<img src="docs/images/movies_with_most_male_replicas.png" width="60%" alt="Movies with most male replicas">
 
   <h4>20 Movies with Female Dominated Replicas</h4>
-<img src="docs/images/movies_with_women_most_replicas.png" width="85%" alt="Movies with most female replicas">
+<img src="docs/images/movies_with_women_most_replicas.png" width="60%" alt="Movies with most female replicas">
 
   <h4>20 Movies with Replica's Balance</h4>
-<img src="docs/images/movies_with_most_balance.png" width="85%" alt="Movies with most replicas balance">
+<img src="docs/images/movies_with_most_balance.png" width="60%" alt="Movies with most replicas balance">
 
 
 * **Directorial Influence:** Data profiles revealed that female directors show a significantly narrower, more unified variance in character average replica length across all personas. Conversely, male directors exhibit broader, more volatile phrase extremes.
