@@ -1,6 +1,6 @@
 # 🎬 NLP-Based Analysis of Dialogues in Ukrainian Films
 
-An end-to-end Natural Language Processing (NLP) pipeline designed to extract, analyze, and map sociolinguistic and narrative trends for a given movie. 
+An end-to-end pipeline designed to extract, analyze, and map sociolinguistic and narrative trends for a given movie. 
 
 This system leverages multimodal data fusion (Text, Audio, Vision) to automate media analysis, tracking gender representation, dialogue dynamics, and lexical markers.
 
@@ -119,9 +119,10 @@ Key data insights of the corpus uncovered:
 <img src="docs/images/top_15_log_odds_ratio_for_verbs.png" width="70%" alt="top_15_log_odds_ratio_for_verbs">
 </p>
   
-* **Bechdel Test:** 68,9 % movies of the corpus have passed the Bechdel Test.
-  <p align="center">
-<img src="docs/images/Bechdel_plot_summary.png" width="70%" alt="Bechdel Test">
+* **Bechdel Test:** 68,9 % movies of the corpus (93) have passed the Bechdel Test, while 31,1 % have not (42 movies).
+
+<p align="center">
+  <img src="docs/images/Bechdel_plot_summary.png" width="70%" alt="Bechdel Test">
 </p>
 
 ---
