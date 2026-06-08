@@ -7,7 +7,6 @@ This system leverages multimodal data fusion (Text, Audio, Vision) to automate m
 * **Academic Credentials:** This project was developed as a Bachelor’s Diploma Thesis at the **National University of Kyiv-Mohyla Academy (NaUKMA)**.
 * **Academic Peer Review:** Validated and presented at the *III (IX) International Scientific and Practical Conference "Information Technologies: Theory and Practice" (March 25–27, 2026)*.
 
----
 
 ## The Core Problem
 
@@ -16,9 +15,8 @@ Traditional media analytics and sociolinguistic research suffer from three major
 2. **Subjectivity Bias:** Human annotators bring personal biases, risking inconsistent analytical results.
 3. **Tool Fragmentation:** A lack of unified digital platforms capable of handling everything from raw speech-to-text to deep linguistic pattern mining.
 
-Additionally, this project also applies **Computational Social Science (CSS)** principles by providing key insights on the movie corpus.
+Additionally, this project applies **Computational Social Science (CSS)** principles by providing key insights on the movie corpus.
 
----
 
 ## Data Pipeline Architecture
 
@@ -51,7 +49,7 @@ sequenceDiagram
     G->>R: 6. Speaker Gender<br/>Identification
     Note over R: Analysis Generation
 ```
----
+
 
 ### Key Technical Innovations
 
@@ -68,21 +66,19 @@ Instead of relying strictly on text, the system uses a robust multimodal archite
 
 > The models compensate for each other's limitations. For example, acoustic data remains perfectly functional under low lighting conditions where computer vision models degrade.
 
----
 
 ### 📈 Analytics
 
-Once processed, the program builds a comprehensive multi-dimensional analytical profile:
+Once processed, the program builds a comprehensive multi-dimensional analytical profile for a given media file:
 * **Temporal Profiling:** Calculates speaking time distribution across genders, conversational velocity, and monologue instances.
 * **Dialogue Balance Metrics:** Measures overall replica counts, average phrase length ("Eloquence" rating).
 * **Lexical Mapping:** Extracts parts-of-speech distributions and distinct TF-IDF vocabulary for each gender.
 * **Sociolinguistic Evaluation:** Features an automated **Bechdel Test** verifier (detects if at least two female characters talk to each other about a topic other than a man).
 
----
 
 ### Corpus Testing & Key Findings
 
-The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. The corpus distribution provied in the next visualisation (specifying amount of movies belonging to each gender and amount of movies per release year):
+The system was tested and validated on a comprehensive sample of **135 Ukrainian films** spanning from **1952 to 2025**. The corpus distribution provided in the next visualisation (specifying amount of movies belonging to each gender and amount of movies per release year):
 <p align="center">
   <img src="docs/images/corpus_info_genres_years_combined.png" width="70%" alt="Movie distribution">
 </p>
@@ -90,7 +86,7 @@ The system was tested and validated on a comprehensive sample of **135 Ukrainian
 
 Key data insights of the corpus uncovered:
 
-* **Dialogue Distribution:** Categorized the film corpus into three distinct narrative structures: male-dominated (peaking at 99% of all dialogue lines), female-dominated (peaking significantly lower at 82%), and gender-balanced profiles (within a $\pm$3% margin), uncovering a clear ceiling effect in female character representation.
+* **Dialogue Distribution:** Categorized the film corpus into three distinct narrative structures: male-dominated (peaking at 99% of all dialogue lines), female-dominated (peaking significantly lower at 82%), and gender-balanced profiles (within a +/- 6% margin).
   <h4 align="center">20 Movies with Male Dominated Replicas</h4>
 <p align="center">
   <img src="docs/images/movies_with_most_male_replicas.png" width="70%" alt="Movies with most male replicas">
@@ -130,7 +126,7 @@ Key data insights of the corpus uncovered:
 ### 🖥️ User Interface Preview
 
 <details>
-  <summary>📸 Click to expand web application screenshots</summary>
+  <summary>📸 Click to expand web application screenshots for a given movie ("Поводир"/"The Guide" (2014))</summary>
   <br>
   
   <h4>Main Dashboard Overview</h4>
@@ -150,6 +146,9 @@ Key data insights of the corpus uncovered:
 
   <h4>TF-IDF Markers per Gender</h4>
 <img src="docs/images/web_tf-idf.jpg" width="85%" alt="tf-idf_markers">
+
+  <h4>Most Used Lemmas for men, women and general lexicon</h4>
+<img src="docs/images/most_used_lemmas_per_gender.jpg" width="85%" alt="most_used_lemmas_per_gender">
 
 
 </details>
