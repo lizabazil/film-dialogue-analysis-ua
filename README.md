@@ -4,8 +4,8 @@ An end-to-end pipeline designed to extract, analyze, and map sociolinguistic and
 
 This system leverages multimodal data fusion (Text, Audio, Vision) to automate media analysis, tracking gender representation, dialogue dynamics, and lexical markers.
 
-* **Academic Credentials:** This project was developed as a Bachelor’s Diploma Thesis at the **National University of Kyiv-Mohyla Academy (NaUKMA)**.
-* **Academic Peer Review:** Validated and presented at the *III (IX) International Scientific and Practical Conference "Information Technologies: Theory and Practice" (March 25–27, 2026)*.
+* **Academic Credentials:** This project was developed as a Bachelor’s diploma project at the **National University of Kyiv-Mohyla Academy (NaUKMA)**.
+* **Academic Peer Review:** Presented at the *III (IX) International Scientific and Practical Conference "Information Technologies: Theory and Practice" (March 25–27, 2026)*.
 
 
 ## The Core Problem
